@@ -19,16 +19,16 @@ def Cost(newp, x, y):
     return C
 
 def msm_dist_pruned(ts1, ts2, m, n, bsf):
-    tmp_array = np.full(n, float('inf'))
+    tmp_array = np.full(n+1, float('inf'))
     tmp = 0
     sc = 1
     ec = 1
     ts1[0], ts2[0]= math.inf, math.inf
-    for i in range(1, m):
+    for i in range(1, m+1):
         smaller_found = False
         xi = ts1[i]
         ec_next = i
-        for j in range(sc, n):
+        for j in range(sc, n+1):
             yj = ts2[j]
             d1 = tmp + abs(xi - yj)
             d2 = tmp_array[j] + Cost(xi, ts1[i - 1], yj)
@@ -48,7 +48,7 @@ def msm_dist_pruned(ts1, ts2, m, n, bsf):
         tmp_array = fill_with_inf(1, sc, tmp_array)
         tmp = float('inf')
         ec = ec_next
-    return tmp_array[n-1]
+    return tmp_array[n]
 
 def msm_dist(sequence, query, m, n):
     cost_array = np.full((m,n), float('inf'))
@@ -78,8 +78,8 @@ def main(*args):
         raise Exception("Query Path is empty")
     start_time = time.time()
     with open(UCRARCHIVE_PATH + args[1] + "\\" + args[1] + "_TEST.tsv") as file:
-        query_count += 1
         for value in file:
+            query_count += 1
             query = value.strip().split('\t')
             #Convert string to float
             for i, value in enumerate(query):
@@ -98,7 +98,7 @@ def main(*args):
                         sequence[i] = float(value)
                     s_class = sequence[0]
                     class_train.append(query[0])
-                    pred_dist = msm_dist_pruned(sequence, query, len(query), len(sequence), bsf)
+                    pred_dist = msm_dist_pruned(sequence, query, len(query)-1, len(sequence)-1, bsf)
                     #pred_dist = msm_dist(sequence[1:], query[1:], len(query)-1, len(sequence)-1)
                     if bsf > pred_dist:
                         bsf = pred_dist
