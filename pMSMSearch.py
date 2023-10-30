@@ -13,58 +13,72 @@ def fill_with_inf(start, end, array):
 def get_lower_bound(m, n, xCoord, yCoord):
     return abs(m-n-xCoord+yCoord) * C
 
-def Cost(newp, x, y):
-    if newp <= min(x,y) or newp >= max(x,y):
-        return C + min(abs(newp - x), abs(newp - y))
-    return C
+def cost(newPoint, x, y):
+    if (x <= newPoint and newPoint <= y) or (y <= newPoint and newPoint <= x):
+        return C
+    else:
+        return C + min(abs(newPoint - x), abs(newPoint - y))
 
 def msm_dist_pruned(ts1, ts2, m, n, bsf):
-    tmp_array = np.full(n+1, float('inf'))
+    tmpArray = np.full(n+1, float('inf'))
     tmp = 0
     sc = 1
     ec = 1
     ts1[0], ts2[0]= math.inf, math.inf
-    for i in range(1, m+1):
-        smaller_found = False
+    i=1
+    while i < m+1:
+        smallerFound = False
         xi = ts1[i]
         ec_next = i
-        for j in range(sc, n+1):
+        j=sc
+        while j < n+1:
             yj = ts2[j]
             d1 = tmp + abs(xi - yj)
-            d2 = tmp_array[j] + Cost(xi, ts1[i - 1], yj)
-            d3 = tmp_array[j - 1] + Cost(yj, xi, ts2[j - 1])
-            tmp = tmp_array[j]
-            tmp_array[j] = min(d1, min(d2, d3))
+            d2 = tmpArray[j] + cost(xi, ts1[i - 1], yj)
+            d3 = tmpArray[j - 1] + cost(yj, xi, ts2[j - 1])
+            tmp = tmpArray[j]
+            tmpArray[j] = min(d1, min(d2, d3))
             lb = get_lower_bound(m, n, i, j)
-            if (tmp_array[j] + lb) > bsf:
-                if not smaller_found:
+            if (tmpArray[j] + lb) > bsf:
+                if not smallerFound:
                     sc = j + 1
                 if j > ec:
-                    tmp_array = fill_with_inf(j + 1, n + 1, tmp_array)
+                    tmpArray = fill_with_inf(j + 1, n + 1, tmpArray)
                     break
             else:
-                smaller_found = True
+                smallerFound = True
                 ec_next = j + 1
-        tmp_array = fill_with_inf(1, sc, tmp_array)
+            j += 1
+        tmpArray = fill_with_inf(1, sc, tmpArray)
         tmp = float('inf')
         ec = ec_next
-    return tmp_array[n]
+        i += 1
+    return tmpArray[n]
 
 def msm_dist(sequence, query, m, n):
-    cost_array = np.full((m,n), float('inf'))
-    cost_array[0,0] = abs(sequence[0] - query[0])
-    for i in range(1, m-1):
-        cost_array[i][0] = cost_array[i-1][0] + Cost(sequence[i], sequence[i-1], query[0])
-    for j in range(1, n-1):
-        cost_array[j][0] = cost_array[j-1][0] + Cost(query[i], sequence[0], query[j-1])
+    i=1
+    j=1
+    costArray = np.full((m,n), float('inf'))
+    costArray[0,0] = abs(sequence[0] - query[0])
+    while i < m:
+        costArray[i][0] = costArray[i-1][0] + cost(query[i], query[i - 1], sequence[0])
+        i += 1
+    while j < n:
+        costArray[0][j] = costArray[0][j-1] + cost(sequence[j], query[0], sequence[j - 1])
+        j += 1
+    i=1
+    j=1
+    while i < m:
+        j=1
+        while j < n:
 
-    for i in range(1, m-1 ):
-        for j in range(1, n-10):
-            d1 = cost_array[i-1][j-1] + abs(sequence[i] - query[j])
-            d2 = cost_array[i-1][j] + Cost(sequence[i], sequence[i - 1], query[j])
-            d3 = cost_array[i][j-1] + Cost(query[j], sequence[i], query[j-1])
-            cost_array[j] = min(d1, min(d2, d3))
-    return cost_array[m-1][n-1]
+            d1 = costArray[i-1][j-1] + abs(query[i] - sequence[j])
+            d2 = costArray[i-1][j] + cost(query[i], query[i - 1], sequence[j])
+            d3 = costArray[i][j-1] + cost(sequence[j], query[i], sequence[j - 1])
+            costArray[i][j] = min(d1, min(d2, d3))
+            j += 1
+        i += 1
+    return costArray[m-1][n-1]
 
 def main(*args):
     class_train = []
@@ -115,5 +129,4 @@ if __name__ == "__main__":
     if len(sys.argv) < 2:
         print("Usage: python test.py <dataset>")
         sys.exit(1)
-
     main(*sys.argv[0:])
