@@ -3,7 +3,7 @@ import sys, os,\
 import numpy as np
 
 C = 0.1
-UCRARCHIVE_PATH = ".\\UCRArchive_2018\\UCRArchive_2018\\"
+UCRARCHIVE_PATH = ".\\UCRArchive\\"
 
 def fill_with_inf(start, end, array):
     for i in range(start, end-1):
@@ -106,15 +106,17 @@ def main(*args):
             pred_class = math.inf
             with open(UCRARCHIVE_PATH + args[1] + "\\" + args[1] + "_TRAIN.tsv") as file:
                 tsv_file = csv.reader(file, delimiter="\t")
-                for sequence in tsv_file:
+                for idx, sequence in enumerate(tsv_file):
                     #Convert string to float
-                    for i, value in enumerate(sequence):
-                        sequence[i] = float(value)
+                    for j, value in enumerate(sequence):
+                        sequence[j] = float(value)
                     s_class = sequence[0]
                     class_train.append(query[0])
                     pred_dist = msm_dist_pruned(sequence, query, len(query)-1, len(sequence)-1, bsf)
                     #pred_dist = msm_dist(sequence[1:], query[1:], len(query)-1, len(sequence)-1)
                     if bsf > pred_dist:
+                        print("Better found at: ", idx, " with class: ", s_class, " class should be: ", q_class)
+                        print("pred_dist: ", pred_dist, " bsf: ", bsf)
                         bsf = pred_dist
                         pred_class = s_class
                 if pred_class == q_class:

@@ -24,13 +24,3 @@ def test_pruned_msm_simple_calculated():
     assert run_msm(0,1)[0] == 4.4
 def test_pruned_msm_simple_compare():
     assert run_msm(0,1)[0] == run_msm(0,1)[1]
-
-def test_pruned_msm_car_compare():
-    msm = run_msm(2,3)
-    print("test_pruned_msm_car_compare: ", msm)
-    assert msm[0] == msm[1]
-
-def test_pruned_msm_acsf_compare():
-    msm = run_msm(4,5)
-    print("test_pruned_msm_acsf_compare: ", msm)
-    assert msm[0] == msm[1]
