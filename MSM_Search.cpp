@@ -7,6 +7,7 @@
 #include <fstream>
 #include <cstdlib>
 #include <math.h>
+#include <cstring>
 
 #define INF 1e20       //Pseudo Infitinte number for this code
 
@@ -103,14 +104,14 @@ int main(  int argc , char *argv[] )
     long long i, nearest;
     int qclass, nclass;
     int tp, qcount;
-    double acc;
+    float acc;
 
     if (argc!=4)      error(1);
 
     double t1,t2;          // timer
     t1 = clock();
 
-    FILE *qp = NULL;
+    FILE *qp = NULL;    //query data
     if (NULL == (qp = fopen(argv[2],"r")))   error(2);
 
     int ql;                 // length of query
@@ -135,14 +136,21 @@ int main(  int argc , char *argv[] )
         }
         i++;
     }
-    fclose(qp);
 
     t2 = clock();
-    acc = tp/qcount;
+    acc = (float)tp/(float)qcount;
     cout << "tp: " << tp << endl;
     cout << "qcount: " << qcount << endl;
     cout << "Accuracy: " << acc << endl;
     cout << "Total Execution Time : " << (t2-t1)/CLOCKS_PER_SEC << " sec" << endl;
+
+    char *ptr;
+    ptr = strtok(argv[1], "/");
+    ptr = strtok(NULL, "/");
+    FILE *rd = NULL;    //result data
+    rd = fopen("results.csv", "a");
+    fprintf(rd,"%s, %d, %d, %f, %f secs\n", ptr, qcount, ql, acc, (t2-t1)/CLOCKS_PER_SEC);
+    fclose(qp);
     return 0;
 }
 
