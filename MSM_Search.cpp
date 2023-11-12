@@ -118,6 +118,7 @@ int main(  int argc , char *argv[] )
     double query[ql-1];
     i = 0;
     qcount = 0;
+    tp = 0;
     while(fscanf(qp,"%lf",&qval) != EOF )
     {
         if(i == 0) qclass = qval;
@@ -126,7 +127,7 @@ int main(  int argc , char *argv[] )
         }
         if(i==ql)
         {
-            nclass = knn(query, argv[2], ql);
+            nclass = knn(query, argv[1], ql);
             if(nclass == qclass)   tp++;
             cout << "Query class: "<< qclass << "; 1NN class: "<< nclass << endl;
             i=-1;
