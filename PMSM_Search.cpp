@@ -11,6 +11,7 @@
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
 
 #define INF 1e20       //Pseudo Infitinte number for this code
 
@@ -20,8 +21,10 @@ using namespace std;
 #define min(x, y) ((x) < (y) ? (x) : (y))
 #define max(x, y) ((x) > (y) ? (x) : (y))
 
-#define C_COST 0.5 // cost for merge and split
+#define C_COST 0.1 // cost for merge and split
 #define INF 1e20   // Pseudo Infitinte number for this code
+
+
 
 void error(int id)
 {
@@ -183,9 +186,11 @@ double getLowerBound(int xCoord, int yCoord)
  * compute the Msm distance table with pruned entries
  *
  * @return pair: first Double: Distance, second Double: relative amount of pruned cells
+ * msmDistPruned by Jana Holznigenkemper
  */
 double msmDistPruned(const vector<double> &X, const vector<double> &Y)
 {
+
     const std::vector<double>::size_type m = X.size();
 
     vector<double> upperBoundArray = calculateMsmGreedyArray(X, Y);
@@ -199,6 +204,7 @@ double msmDistPruned(const vector<double> &X, const vector<double> &Y)
 
     ts1.insert(ts1.end(), X.begin(), X.end());
     ts2.insert(ts2.end(), Y.begin(), Y.end());
+
 
     // Create an array with one extra entry, regarding the whole matrix we initialize
     // MsmDistAStar.Entry [0,0] is set to 0
@@ -244,6 +250,7 @@ double msmDistPruned(const vector<double> &X, const vector<double> &Y)
         {
 
             double yj = ts2[j];
+
             double d1, d2, d3;
             d1 = tmp + abs(xi - yj);
             // merge
@@ -294,28 +301,32 @@ double msmDistPruned(const vector<double> &X, const vector<double> &Y)
 int knn(vector<double> query, const char *sf, int ql)
 {
     double bsf = INF;            // best-so-far
-    double sequence[ql-1];
+    double sequence[ql];
     double sval;
     int sclass, bclass;
+    int scount;
     FILE *sp = NULL;
     if (NULL == (sp = fopen(sf,"r")))   error(2);
     long long j;
     j = 0;
+    scount = 0;
+
     while(fscanf(sp,"%lf",&sval) != EOF )
     {
         if(j == 0) sclass = sval;
         else{
-            sequence[j] = sval;
+            sequence[j-1] = sval;
         }
         if(j==ql)
         {
-            double distance = msmDistPruned(query, vector<double>(sequence, sequence + sizeof sequence / sizeof sequence[0]));
+            double distance = msmDistPruned(query, vector<double>(sequence, sequence + ql));
             if(distance < bsf)
             {
                 bsf = distance;
                 bclass = sclass;
             }
             j=-1;
+            scount++;
         }
         j++;
     }
@@ -326,11 +337,12 @@ int knn(vector<double> query, const char *sf, int ql)
 
 int main(  int argc , char *argv[] )
 {
+    vector<vector<double>> queryfile;
     double qval;
     long long i, nearest;
     int qclass, nclass;
     int tp, qcount;
-    double acc;
+    float acc;
 
     if (argc!=4)      error(1);
 
@@ -338,6 +350,8 @@ int main(  int argc , char *argv[] )
     t1 = clock();
 
     FILE *qp = NULL;
+    FILE *preddata = NULL;    //prediction data
+    preddata = fopen("predictPMSM.csv", "a");
     if (NULL == (qp = fopen(argv[2],"r")))   error(2);
 
     int ql;                 // length of query
@@ -346,31 +360,37 @@ int main(  int argc , char *argv[] )
     i = 0;
     qcount = 0;
     tp = 0;
+
+
     while(fscanf(qp,"%lf",&qval) != EOF )
     {
         if(i == 0) qclass = qval;
         else{
-            query[i] = qval;
+            query[i-1] = qval;
         }
         if(i==ql)
         {
-            nclass = knn(vector<double>(query, query + sizeof query / sizeof query[0]), argv[1], ql);
+            nclass = knn(vector<double>(query, query + ql), argv[1], ql);
             if(nclass == qclass)   tp++;
-            cout << "Query class: "<< qclass << "; 1NN class: "<< nclass << endl;
-            cout << "tp: " << tp << endl;
             i=-1;
             qcount++;
         }
         i++;
     }
-    fclose(qp);
 
     t2 = clock();
-    acc = tp/qcount;
+    acc = (float)tp/(float)qcount;
     cout << "tp: " << tp << endl;
     cout << "qcount: " << qcount << endl;
     cout << "Accuracy: " << acc << endl;
-    cout << "Total Execution Time : " << (t2-t1)/CLOCKS_PER_SEC << " sec" << endl;
+    cout << "Total Execution Time : " << (t2-t1)/CLOCKS_PER_SEC << " sec" << endl;    char *ptr;
+
+    ptr = strtok(argv[1], "/");
+    ptr = strtok(NULL, "/");
+    FILE *rd = NULL;    //result data
+    rd = fopen("results.csv", "a");
+    fprintf(rd,"%s, %s, %d, %d, %f, %f secs\n", "PMSM",ptr, qcount, ql, acc, (t2-t1)/CLOCKS_PER_SEC);
+    fclose(qp);
     return 0;
 }
 

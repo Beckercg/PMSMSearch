@@ -71,15 +71,17 @@ int knn(double *query, const char *sf, int ql)
     double sequence[ql];
     double sval;
     int sclass, bclass;
+    int scount;
     FILE *sp = NULL;
     if (NULL == (sp = fopen(sf,"r")))   error(2);
     long long j;
     j = 0;
+    scount = 0;
     while(fscanf(sp,"%lf",&sval) != EOF )
     {
         if(j == 0) sclass = sval;
         else{
-            sequence[j] = sval;
+            sequence[j-1] = sval;
         }
         if(j==ql)
         {
@@ -90,6 +92,7 @@ int knn(double *query, const char *sf, int ql)
                 bclass = sclass;
             }
             j=-1;
+            scount++;
         }
         j++;
     }
@@ -112,6 +115,8 @@ int main(  int argc , char *argv[] )
     t1 = clock();
 
     FILE *qp = NULL;    //query data
+    FILE *preddata = NULL;    //prediction data
+    preddata = fopen("predictMSM.csv", "a");
     if (NULL == (qp = fopen(argv[2],"r")))   error(2);
 
     int ql;                 // length of query
@@ -122,9 +127,11 @@ int main(  int argc , char *argv[] )
     tp = 0;
     while(fscanf(qp,"%lf",&qval) != EOF )
     {
-        if(i == 0) qclass = qval;
+        if(i == 0) {
+            qclass = qval;
+        }
         else{
-            query[i] = qval;
+            query[i-1] = qval;
         }
         if(i==ql)
         {
@@ -149,7 +156,7 @@ int main(  int argc , char *argv[] )
     ptr = strtok(NULL, "/");
     FILE *rd = NULL;    //result data
     rd = fopen("results.csv", "a");
-    fprintf(rd,"%s, %d, %d, %f, %f secs\n", ptr, qcount, ql, acc, (t2-t1)/CLOCKS_PER_SEC);
+    fprintf(rd,"%s, %s, %d, %d, %f, %f secs\n", "MSM",ptr, qcount, ql, acc, (t2-t1)/CLOCKS_PER_SEC);
     fclose(qp);
     return 0;
 }

@@ -1,1 +1,3 @@
-Name, Querycount, Querylength, Accuracy, Time taken
+SearchType, Name, Querycount, Querylength, Accuracy, Time taken
+PMSM, Adiac, 391, 176, 0.613811, 99.835000 secs
+MSM, Adiac, 391, 176, 0.613811, 118.213000 secs
