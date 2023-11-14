@@ -5,7 +5,7 @@
 
 #include <iostream>
 #include <fstream>
-
+#include <sstream>
 #include <ctime>
 #include <vector>
 #include <cmath>
@@ -38,6 +38,47 @@ void error(int id)
         cout << "Error while open file!" << endl;
     exit(1);
 }
+
+bool readFiles(const char *fileToRead,
+               std::vector<std::vector<double>> &data,
+               std::vector<double> &classValue,
+               char separator = '\t') // default separator is tab
+{
+    std::ifstream fin(fileToRead);
+    std::string line;
+
+    if (!fin.is_open())
+    {
+        return false;
+    }
+
+    while (std::getline(fin, line))
+    {
+        std::istringstream lineStream(line);
+        std::string value;
+        std::vector<double> auxTS;
+        double auxVal;
+        bool isclassValue = true;
+
+        while (std::getline(lineStream, value, separator))
+        {
+            std::istringstream(value) >> auxVal;
+            std::cout << auxVal << endl;
+            if (isclassValue)
+            {
+                classValue.push_back(auxVal);
+                isclassValue = false;
+            }
+            else
+            {
+                auxTS.push_back(auxVal);
+            }
+        }
+        data.push_back(auxTS);
+    }
+    return true;
+}
+
 /*
 double C(double new_point, double x, double y){
     double c = 0.1; // Change this value if needed.
@@ -340,10 +381,11 @@ int main(  int argc , char *argv[] )
     vector<vector<double>> queryfile;
     double qval;
     long long i, nearest;
-    int qclass, nclass;
+    int nclass;
     int tp, qcount;
     float acc;
-
+    vector<vector<double>> data;
+    vector<double> qclass;
     if (argc!=4)      error(1);
 
     double t1,t2;          // timer
@@ -361,7 +403,25 @@ int main(  int argc , char *argv[] )
     qcount = 0;
     tp = 0;
 
+    if (!readFiles(argv[2], queryfile, qclass))
+    {
 
+        printf("Error opening file.\n\n");
+        return 0;
+    }
+
+    printf("Read data is compose of %d examples with %d observations each\n\n", queryfile.size(), queryfile[1].size());
+
+    t1 = clock();
+
+    for (std::vector<double>::size_type i = 0; i < queryfile.size()-1; i=i+2){
+        nclass = knn(queryfile[i], argv[1], ql);
+        if(nclass == qclass[i])   tp++;
+
+        qcount++;
+        printf("%d data: %d\n", i, queryfile[i][2]);
+    }
+    /*
     while(fscanf(qp,"%lf",&qval) != EOF )
     {
         if(i == 0) qclass = qval;
@@ -370,14 +430,14 @@ int main(  int argc , char *argv[] )
         }
         if(i==ql)
         {
-            nclass = knn(vector<double>(query, query + ql), argv[1], ql);
+            nclass = knn(query, argv[1], ql);
             if(nclass == qclass)   tp++;
             i=-1;
             qcount++;
         }
         i++;
     }
-
+    */
     t2 = clock();
     acc = (float)tp/(float)qcount;
     cout << "tp: " << tp << endl;
