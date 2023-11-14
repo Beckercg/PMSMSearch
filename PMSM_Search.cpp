@@ -22,7 +22,7 @@ using namespace std;
 #define max(x, y) ((x) > (y) ? (x) : (y))
 
 #define C_COST 0.1 // cost for merge and split
-#define INF 1e20   // Pseudo Infitinte number for this code
+#define INF 1e20   // pseudo infinite number for this code
 
 
 
@@ -40,30 +40,29 @@ void error(int id)
 }
 
 bool readFiles(const char *fileToRead,
-               std::vector<std::vector<double>> &data,
-               std::vector<double> &classValue,
+               vector<vector<double>> &data,
+               vector<int> &classValue,
                char separator = '\t') // default separator is tab
 {
-    std::ifstream fin(fileToRead);
-    std::string line;
+    ifstream fin(fileToRead);
+    string line;
 
     if (!fin.is_open())
     {
         return false;
     }
 
-    while (std::getline(fin, line))
+    while (getline(fin, line))
     {
-        std::istringstream lineStream(line);
-        std::string value;
-        std::vector<double> auxTS;
+        istringstream lineStream(line);
+        string value;
+        vector<double> auxTS;
         double auxVal;
         bool isclassValue = true;
 
-        while (std::getline(lineStream, value, separator))
+        while (getline(lineStream, value, separator))
         {
-            std::istringstream(value) >> auxVal;
-            std::cout << auxVal << endl;
+            istringstream(value) >> auxVal;
             if (isclassValue)
             {
                 classValue.push_back(auxVal);
@@ -121,11 +120,11 @@ double MSM_Distance(double* X, int m, double * Y, int n){
 
 vector<double> calculateMsmGreedyArray(const vector<double> &X, const vector<double> &Y)
 {
-    const std::vector<double>::size_type m = X.size();
+    const vector<double>::size_type m = X.size();
 
     vector<double> greedyArray;
     // greedyArray.reserve(m + 1);
-    greedyArray = std::vector<double>(m + 1, 0);
+    greedyArray = vector<double>(m + 1, 0);
 
     // compute upper Bounds for every diagonal entry
     // the upper bound is computed from right to left: Possibility to update the upper Bound when a diagonal entry is computed
@@ -143,7 +142,7 @@ vector<double> calculateMsmGreedyArray(const vector<double> &X, const vector<dou
 
     greedyArray[m - 1] = distCurrent;
 
-    for (std::vector<double>::size_type i = 2; i <= m; i++)
+    for (vector<double>::size_type i = 2; i <= m; i++)
     {
         xCurrent = X[m - i];
         yCurrent = Y[m - i];
@@ -232,13 +231,13 @@ double getLowerBound(int xCoord, int yCoord)
 double msmDistPruned(const vector<double> &X, const vector<double> &Y)
 {
 
-    const std::vector<double>::size_type m = X.size();
+    const vector<double>::size_type m = X.size();
 
     vector<double> upperBoundArray = calculateMsmGreedyArray(X, Y);
     double upperBound = upperBoundArray[0] + 0.0000001;
 
-    vector<double> ts1 = std::vector<double>(1, INF);
-    vector<double> ts2 = std::vector<double>(1, INF);
+    vector<double> ts1 = vector<double>(1, INF);
+    vector<double> ts2 = vector<double>(1, INF);
 
     ts1.reserve(m + 1);
     ts2.reserve(m + 1);
@@ -250,7 +249,7 @@ double msmDistPruned(const vector<double> &X, const vector<double> &Y)
     // Create an array with one extra entry, regarding the whole matrix we initialize
     // MsmDistAStar.Entry [0,0] is set to 0
     // the first row and the first column with inf --> Every entry follows the same computational rules
-    vector<double> tmpArray = std::vector<double>(m + 1, INF);
+    vector<double> tmpArray = vector<double>(m + 1, INF);
 
     // value storing the first "real value" of the array before overwriting it
     //  the first value of the first row has to be 0
@@ -270,7 +269,7 @@ double msmDistPruned(const vector<double> &X, const vector<double> &Y)
 
     //  int counterBandwidth =0;
     // row index
-    for (std::vector<double>::size_type i = 1; i < tmpArray.size(); i++)
+    for (vector<double>::size_type i = 1; i < tmpArray.size(); i++)
     {
 
         // compute bandwidth regarding the upper bound
@@ -287,7 +286,7 @@ double msmDistPruned(const vector<double> &X, const vector<double> &Y)
         smallerFound = false;
 
         // column index
-        for (std::vector<double>::size_type j = start; j < end; j++)
+        for (vector<double>::size_type j = start; j < end; j++)
         {
 
             double yj = ts2[j];
@@ -311,7 +310,7 @@ double msmDistPruned(const vector<double> &X, const vector<double> &Y)
                     sc = j + 1;
                 if (j > ec)
                 {
-                    std::fill(tmpArray.begin() + j + 1, tmpArray.end(), INF);
+                    fill(tmpArray.begin() + j + 1, tmpArray.end(), INF);
                     break;
                 }
             }
@@ -328,7 +327,7 @@ double msmDistPruned(const vector<double> &X, const vector<double> &Y)
         }
 
         // tmpArray = this.fillWithInf(1, sc, tmpArray);
-        std::fill(tmpArray.begin() + 1, tmpArray.begin() + sc, INF);
+        fill(tmpArray.begin() + 1, tmpArray.begin() + sc, INF);
 
         // set tmp to infinity since the move computation in the next row is not possible and accesses tmp
         tmp = INF;
@@ -339,62 +338,39 @@ double msmDistPruned(const vector<double> &X, const vector<double> &Y)
 }
 
 
-int knn(vector<double> query, const char *sf, int ql)
+int knn(vector<double> query, vector<vector<double>> sequencefile, vector<int> sclass, int ql)
 {
     double bsf = INF;            // best-so-far
-    double sequence[ql];
-    double sval;
-    int sclass, bclass;
-    int scount;
-    FILE *sp = NULL;
-    if (NULL == (sp = fopen(sf,"r")))   error(2);
-    long long j;
-    j = 0;
-    scount = 0;
+    double distance;
+    int bclass;
 
-    while(fscanf(sp,"%lf",&sval) != EOF )
-    {
-        if(j == 0) sclass = sval;
-        else{
-            sequence[j-1] = sval;
-        }
-        if(j==ql)
+    for (vector<double>::size_type j = 0; j < sequencefile.size(); j++){
+        distance = msmDistPruned(query, sequencefile[j]);
+        if(distance < bsf)
         {
-            double distance = msmDistPruned(query, vector<double>(sequence, sequence + ql));
-            if(distance < bsf)
-            {
-                bsf = distance;
-                bclass = sclass;
-            }
-            j=-1;
-            scount++;
+            bsf = distance;
+            bclass = sclass[j];
         }
-        j++;
     }
-
-    fclose(sp);
     return bclass;
 }
 
 int main(  int argc , char *argv[] )
 {
     vector<vector<double>> queryfile;
+    vector<vector<double>> sequencefile;
+    vector<int> qclass;
+    vector<int> sclass;
     double qval;
     long long i, nearest;
     int nclass;
     int tp, qcount;
     float acc;
-    vector<vector<double>> data;
-    vector<double> qclass;
     if (argc!=4)      error(1);
 
     double t1,t2;          // timer
     t1 = clock();
 
-    FILE *qp = NULL;
-    FILE *preddata = NULL;    //prediction data
-    preddata = fopen("predictPMSM.csv", "a");
-    if (NULL == (qp = fopen(argv[2],"r")))   error(2);
 
     int ql;                 // length of query
     ql = atoi(argv[3]);
@@ -403,41 +379,28 @@ int main(  int argc , char *argv[] )
     qcount = 0;
     tp = 0;
 
+    if (!readFiles(argv[1], sequencefile, sclass))
+    {
+        error(2);
+        return 0;
+    }
     if (!readFiles(argv[2], queryfile, qclass))
     {
 
-        printf("Error opening file.\n\n");
+        error(2);
         return 0;
     }
 
+
     printf("Read data is compose of %d examples with %d observations each\n\n", queryfile.size(), queryfile[1].size());
 
+
     t1 = clock();
-
-    for (std::vector<double>::size_type i = 0; i < queryfile.size()-1; i=i+2){
-        nclass = knn(queryfile[i], argv[1], ql);
+    for (vector<double>::size_type i = 0; i < queryfile.size(); i++){
+        nclass = knn(queryfile[i], sequencefile, sclass, ql);
         if(nclass == qclass[i])   tp++;
-
         qcount++;
-        printf("%d data: %d\n", i, queryfile[i][2]);
     }
-    /*
-    while(fscanf(qp,"%lf",&qval) != EOF )
-    {
-        if(i == 0) qclass = qval;
-        else{
-            query[i-1] = qval;
-        }
-        if(i==ql)
-        {
-            nclass = knn(query, argv[1], ql);
-            if(nclass == qclass)   tp++;
-            i=-1;
-            qcount++;
-        }
-        i++;
-    }
-    */
     t2 = clock();
     acc = (float)tp/(float)qcount;
     cout << "tp: " << tp << endl;
@@ -450,7 +413,7 @@ int main(  int argc , char *argv[] )
     FILE *rd = NULL;    //result data
     rd = fopen("results.csv", "a");
     fprintf(rd,"%s, %s, %d, %d, %f, %f secs\n", "PMSM",ptr, qcount, ql, acc, (t2-t1)/CLOCKS_PER_SEC);
-    fclose(qp);
+
     return 0;
 }
 

@@ -4,7 +4,10 @@
 
 
 #include <iostream>
+#include <vector>
 #include <fstream>
+
+#include <sstream>
 #include <cstdlib>
 #include <math.h>
 #include <cstring>
@@ -27,6 +30,47 @@ void error(int id)
     exit(1);
 }
 
+
+bool readFiles(const char *fileToRead,
+               vector<vector<double>> &data,
+               vector<int> &classValue,
+               char separator = '\t') // default separator is tab
+{
+    ifstream fin(fileToRead);
+    string line;
+
+    if (!fin.is_open())
+    {
+        return false;
+    }
+
+    while (getline(fin, line))
+    {
+        istringstream lineStream(line);
+        string value;
+        vector<double> auxTS;
+        double auxVal;
+        bool isclassValue = true;
+
+        while (getline(lineStream, value, separator))
+        {
+            istringstream(value) >> auxVal;
+            if (isclassValue)
+            {
+                classValue.push_back(auxVal);
+                isclassValue = false;
+            }
+            else
+            {
+                auxTS.push_back(auxVal);
+            }
+        }
+        data.push_back(auxTS);
+    }
+    return true;
+}
+
+
 double C(double new_point, double x, double y){
     double c = 0.1; // Change this value if needed.
     double dist;
@@ -40,8 +84,10 @@ double C(double new_point, double x, double y){
     return dist;
 }
 
-double MSM_Distance(double* X, int m, double * Y, int n){
+double MSM_Distance(vector<double> X, vector<double> Y){
     int i,j;
+    int m = X.size();
+    int n = Y.size();
     double Cost[m][n];
     double d1, d2, d3;
     // Initialize
@@ -65,59 +111,39 @@ double MSM_Distance(double* X, int m, double * Y, int n){
     return Cost[m-1][n-1];
 }
 
-int knn(double *query, const char *sf, int ql)
+int knn(vector<double> query, vector<vector<double>> sequencefile, vector<int> sclass)
 {
     double bsf = INF;            // best-so-far
-    double sequence[ql];
-    double sval;
-    int sclass, bclass;
-    int scount;
-    FILE *sp = NULL;
-    if (NULL == (sp = fopen(sf,"r")))   error(2);
-    long long j;
-    j = 0;
-    scount = 0;
-    while(fscanf(sp,"%lf",&sval) != EOF )
-    {
-        if(j == 0) sclass = sval;
-        else{
-            sequence[j-1] = sval;
-        }
-        if(j==ql)
-        {
-            double distance = MSM_Distance(query, ql, sequence, ql);
-            if(distance < bsf)
-            {
-                bsf = distance;
-                bclass = sclass;
-            }
-            j=-1;
-            scount++;
-        }
-        j++;
-    }
+    double distance;
+    int bclass;
 
-    fclose(sp);
+    for (vector<double>::size_type j = 0; j < sequencefile.size(); j++){
+        distance = MSM_Distance(query, sequencefile[j]);
+        if(distance < bsf)
+        {
+            bsf = distance;
+            bclass = sclass[j];
+        }
+    }
     return bclass;
 }
 
 int main(  int argc , char *argv[] )
 {
+    vector<vector<double>> queryfile;
+    vector<vector<double>> sequencefile;
+    vector<int> qclass;
+    vector<int> sclass;
     double qval;
     long long i, nearest;
-    int qclass, nclass;
+    int nclass;
     int tp, qcount;
     float acc;
-
     if (argc!=4)      error(1);
 
     double t1,t2;          // timer
     t1 = clock();
 
-    FILE *qp = NULL;    //query data
-    FILE *preddata = NULL;    //prediction data
-    preddata = fopen("predictMSM.csv", "a");
-    if (NULL == (qp = fopen(argv[2],"r")))   error(2);
 
     int ql;                 // length of query
     ql = atoi(argv[3]);
@@ -125,39 +151,41 @@ int main(  int argc , char *argv[] )
     i = 0;
     qcount = 0;
     tp = 0;
-    while(fscanf(qp,"%lf",&qval) != EOF )
+
+    if (!readFiles(argv[1], sequencefile, sclass))
     {
-        if(i == 0) {
-            qclass = qval;
-        }
-        else{
-            query[i-1] = qval;
-        }
-        if(i==ql)
-        {
-            nclass = knn(query, argv[1], ql);
-            if(nclass == qclass)   tp++;
-            cout << "Query class: "<< qclass << "; 1NN class: "<< nclass << endl;
-            i=-1;
-            qcount++;
-        }
-        i++;
+        error(2);
+        return 0;
+    }
+    if (!readFiles(argv[2], queryfile, qclass))
+    {
+
+        error(2);
+        return 0;
     }
 
+
+    printf("Read data is compose of %d examples with %d observations each\n\n", queryfile.size(), queryfile[1].size());
+
+
+    t1 = clock();
+    for (vector<double>::size_type i = 0; i < queryfile.size(); i++){
+        nclass = knn(queryfile[i], sequencefile, sclass);
+        if(nclass == qclass[i])   tp++;
+        qcount++;
+    }
     t2 = clock();
     acc = (float)tp/(float)qcount;
     cout << "tp: " << tp << endl;
     cout << "qcount: " << qcount << endl;
     cout << "Accuracy: " << acc << endl;
-    cout << "Total Execution Time : " << (t2-t1)/CLOCKS_PER_SEC << " sec" << endl;
+    cout << "Total Execution Time : " << (t2-t1)/CLOCKS_PER_SEC << " sec" << endl;    char *ptr;
 
-    char *ptr;
     ptr = strtok(argv[1], "/");
     ptr = strtok(NULL, "/");
     FILE *rd = NULL;    //result data
     rd = fopen("results.csv", "a");
     fprintf(rd,"%s, %s, %d, %d, %f, %f secs\n", "MSM",ptr, qcount, ql, acc, (t2-t1)/CLOCKS_PER_SEC);
-    fclose(qp);
     return 0;
 }
 
