@@ -276,7 +276,7 @@ int main(  int argc , char *argv[] )
     ptr = strtok(NULL, "/");
     FILE *rd = NULL;    //result data
     rd = fopen("results.csv", "a");
-    fprintf(rd,"%s, %s, %d, %d, %f, %f secs\n", "MSM",ptr, qcount, queryfile[1].size(), acc, (t2-t1)/CLOCKS_PER_SEC);
+    fprintf(rd,"%s%i, %s, %d, %d, %f, %f secs\n", "MSM learned Sakoe Band: ", bandwidth, ptr, qcount, queryfile[1].size(), acc, (t2-t1)/CLOCKS_PER_SEC);
     return 0;
 }
 
