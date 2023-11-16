@@ -22,7 +22,7 @@ void error(int id)
     if(id==1)
     {
         cout << "ERROR: Invalid Number of Arguments!" << endl;
-        cout << "Command Usage:   PMSMSearch.exe  data_file  query_file bandwidthInPerc" << endl;
+        cout << "Command Usage:   PMSMSearch.exe  data_file  query_file bandwidth(in Percent)" << endl;
         cout << "For example  :   PMSMSearch.exe  data.tsv   query.tsv  50" << endl;
     }
     else if ( id == 2 )
@@ -72,6 +72,26 @@ bool readFiles(const char *fileToRead,
     return true;
 }
 
+bool readData(const char &queryToRead,
+              const char &sequenceToRead,
+              vector<vector<double>> &queryfile,
+              vector<vector<double>> &sequencefile,
+              vector<int> &qclass,
+              vector<int> &sclass) {
+    if (!readFiles(&sequenceToRead, sequencefile, sclass))
+    {
+        error(2);
+        return 0;
+    }
+    printf("Sequence data is compose of %d examples with %d observations each\n", sequencefile.size(), sequencefile[0].size());
+    if (!readFiles(&queryToRead, queryfile, qclass))
+    {
+        error(2);
+        return 0;
+    }
+    printf("Query data is compose of %d examples with %d observations each\n\n", queryfile.size(), queryfile[0].size());
+    return 1;
+}
 
 double C(double new_point, double x, double y){
     double c = 0.1; // Change this value if needed.
@@ -146,55 +166,37 @@ int main(  int argc , char *argv[] )
     vector<vector<double>> sequencefile;
     vector<int> qclass;
     vector<int> sclass;
-    double qval;
-    long long i, nearest;
-    int nclass;
-    int tp, qcount;
+    int nclass, tp;
     float acc;
+    double t1,t2;          // timer
+
     if (argc!=4)      error(1);
 
-    double t1,t2;          // timer
-    t1 = clock();
-
-
-    qcount = 0;
-    tp = 0;
-
-    if (!readFiles(argv[1], sequencefile, sclass))
-    {
-        error(2);
+    if(!readData(*argv[1],
+                 *argv[2],
+                 sequencefile,
+                 queryfile,
+                 sclass,
+                 qclass))
         return 0;
-    }
-    if (!readFiles(argv[2], queryfile, qclass))
-    {
-
-        error(2);
-        return 0;
-    }
-
-
-    printf("Read data is compose of %d examples with %d observations each\n\n", queryfile.size(), queryfile[1].size());
-
 
     t1 = clock();
     for (vector<double>::size_type i = 0; i < queryfile.size(); i++){
         nclass = knn(queryfile[i], sequencefile, sclass, argv[3]);
         if(nclass == qclass[i])   tp++;
-        qcount++;
-        cout << "qcount " << qcount << endl;
     }
     t2 = clock();
-    acc = (float)tp/(float)qcount;
+    acc = tp/(float)queryfile.size();
     cout << "tp: " << tp << endl;
-    cout << "qcount: " << qcount << endl;
+    cout << "qcount: " << queryfile.size() << endl;
     cout << "Accuracy: " << acc << endl;
-    cout << "Total Execution Time : " << (t2-t1)/CLOCKS_PER_SEC << " sec" << endl;    char *ptr;
-
+    cout << "Total Execution Time : " << (t2-t1)/CLOCKS_PER_SEC << " sec" << endl;
+    char *ptr;
     ptr = strtok(argv[1], "/");
     ptr = strtok(NULL, "/");
     FILE *rd = NULL;    //result data
     rd = fopen("results.csv", "a");
-    fprintf(rd,"%s%i, %s, %d, %d, %f, %f secs\n", "MSMwith bandwidth: ", argv[3],ptr, qcount, queryfile[1].size(), acc, (t2-t1)/CLOCKS_PER_SEC);
+    fprintf(rd,"%s%i%, %s, %d, %d, %f, %f secs\n", "MSM with bandwidth: ", argv[3], ptr, queryfile.size(), queryfile[1].size(), acc, (t2-t1)/CLOCKS_PER_SEC);
     return 0;
 }
 

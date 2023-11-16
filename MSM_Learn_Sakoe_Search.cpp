@@ -1,8 +1,4 @@
 //
-// Created by Chris on 11.11.2023.
-//
-
-
 #include <iostream>
 #include <vector>
 #include <fstream>
@@ -23,8 +19,8 @@ void error(int id)
     if(id==1)
     {
         cout << "ERROR: Invalid Number of Arguments!" << endl;
-        cout << "Command Usage:   PMSMSearch.exe  data_file  query_file bandwidthInPerc" << endl;
-        cout << "For example  :   PMSMSearch.exe  data.tsv   query.tsv  50" << endl;
+        cout << "Command Usage:   PMSMSearch.exe  data_file  query_file" << endl;
+        cout << "For example  :   PMSMSearch.exe  data.tsv   query.tsv" << endl;
     }
     else if ( id == 2 )
         cout << "Error while open file!" << endl;
@@ -71,6 +67,27 @@ bool readFiles(const char *fileToRead,
         data.push_back(auxTS);
     }
     return true;
+}
+
+bool readData(const char &queryToRead,
+               const char &sequenceToRead,
+               vector<vector<double>> &queryfile,
+               vector<vector<double>> &sequencefile,
+               vector<int> &qclass,
+               vector<int> &sclass) {
+    if (!readFiles(&sequenceToRead, sequencefile, sclass))
+    {
+        error(2);
+        return 0;
+    }
+    printf("Sequence data is compose of %d examples with %d observations each\n", sequencefile.size(), sequencefile[0].size());
+    if (!readFiles(&queryToRead, queryfile, qclass))
+    {
+        error(2);
+        return 0;
+    }
+    printf("Query data is compose of %d examples with %d observations each\n\n", queryfile.size(), queryfile[0].size());
+    return 1;
 }
 
 
@@ -139,24 +156,8 @@ int knn(vector<double> query, vector<vector<double>> sequencefile, vector<int> s
     }
     return bclass;
 }
-/*
-double crossValidate(vector<vector<double>> sequencefile, double bandwidth, vector<int> sclass) {
-    double averageAccuracy;
-    double bsf = INF;            // best-so-far
-    double distance;
-    int bclass;
-    for (vector<double>::size_type j = 0; j < sequencefile.size(); j++){
 
-        distance = MSM_Distance(sequencefile[j], sequencefile[j], bandwidth);
-        if(distance < bsf)
-        {
-            bsf = distance;
-            bclass = sclass[j];
-        }
-    }
-    return averageAccuracy;
-}
-*/
+
 int crossValidate(vector<vector<double>>& sequenceFile, vector<int>& sclass, int bandwidth) {
     int foldSize = sequenceFile.size() / 10;
     int tp = 0;
@@ -227,55 +228,38 @@ int main(  int argc , char *argv[] )
     vector<vector<double>> sequencefile;
     vector<int> qclass;
     vector<int> sclass;
-    double qval;
-    long long i, nearest;
-    int nclass;
-    int tp, qcount;
+    int nclass, tp;
     float acc;
+    double t1,t2;          // timer
+
     if (argc!=3)      error(1);
 
-    double t1,t2;          // timer
-    t1 = clock();
-
-
-    qcount = 0;
-    tp = 0;
-
-    if (!readFiles(argv[1], sequencefile, sclass))
-    {
-        error(2);
+    if(!readData(*argv[1],
+                 *argv[2],
+                 sequencefile,
+                 queryfile,
+                 sclass,
+                 qclass))
         return 0;
-    }
-    if (!readFiles(argv[2], queryfile, qclass))
-    {
-
-        error(2);
-        return 0;
-    }
 
 
     double bandwidth = findOptimalBandwidth(sequencefile, sclass);
-    printf("Read data is compose of %d examples with %d observations each\n\n", queryfile.size(), queryfile[1].size());
-
-
     t1 = clock();
     for (vector<double>::size_type i = 0; i < queryfile.size(); i++){
         nclass = knn(queryfile[i], sequencefile, sclass, bandwidth);
         if(nclass == qclass[i])   tp++;
-        qcount++;
-        cout << "qcount " << qcount << endl;
     }
-    t2 = clock();
-    acc = (float)tp/(float)qcount;
-    cout << "tp: " << tp << endl;
-    cout << "qcount: " << qcount << endl;
-    cout << "Accuracy: " << acc << endl;
-    cout << "Total Execution Time : " << (t2-t1)/CLOCKS_PER_SEC << " sec" << endl;    char *ptr;
 
+    acc = tp/(float)queryfile.size();
+    cout << "tp: " << tp << endl;
+    cout << "qcount: " << queryfile.size() << endl;
+    cout << "Accuracy: " << acc << endl;
+    cout << "Total Execution Time : " << (t2-t1)/CLOCKS_PER_SEC << " sec" << endl;
+    char *ptr;
     ptr = strtok(argv[1], "/");
     ptr = strtok(NULL, "/");
     FILE *rd = NULL;    //result data
     rd = fopen("results.csv", "a");
-    fprintf(rd,"%s%i, %s, %d, %d, %f, %f secs\n", "MSM learned Sakoe Band: ", bandwidth, ptr, qcount, queryfile[1].size(), acc, (t2-t1)/CLOCKS_PER_SEC);
+    fprintf(rd,"%s%i, %s, %d, %d, %f, %f secs\n", "MSM learned Sakoe Band: ", bandwidth, ptr, queryfile.size(), queryfile[1].size(), acc, (t2-t1)/CLOCKS_PER_SEC);
     return 0;
 }

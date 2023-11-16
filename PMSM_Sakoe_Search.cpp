@@ -31,7 +31,7 @@ void error(int id)
     if(id==1)
     {
         cout << "ERROR: Invalid Number of Arguments!" << endl;
-        cout << "Command Usage:   PMSMSearch.exe  data_file  query_file query_length" << endl;
+        cout << "Command Usage:   PMSMSearch.exe  data_file  query_file bandwidth(in Percent)" << endl;
         cout << "For example  :   PMSMSearch.exe  data.tsv   query.tsv  20" << endl;
     }
     else if ( id == 2 )
@@ -78,45 +78,28 @@ bool readFiles(const char *fileToRead,
     return true;
 }
 
-/*
-double C(double new_point, double x, double y){
-    double c = 0.1; // Change this value if needed.
-    double dist;
-    if ( ( (x <= new_point) && (new_point <= y) ) ||
-         ( (y <= new_point) && (new_point <= x) ) ){
-        dist = c;
+
+bool readData(const char &queryToRead,
+              const char &sequenceToRead,
+              vector<vector<double>> &queryfile,
+              vector<vector<double>> &sequencefile,
+              vector<int> &qclass,
+              vector<int> &sclass) {
+    if (!readFiles(&sequenceToRead, sequencefile, sclass))
+    {
+        error(2);
+        return 0;
     }
-    else{
-        dist = c + min( fabs(new_point - x), fabs(new_point - y) );
+    printf("Sequence data is compose of %d examples with %d observations each\n", sequencefile.size(), sequencefile[0].size());
+    if (!readFiles(&queryToRead, queryfile, qclass))
+    {
+        error(2);
+        return 0;
     }
-    return dist;
+    printf("Query data is compose of %d examples with %d observations each\n\n", queryfile.size(), queryfile[0].size());
+    return 1;
 }
 
-double MSM_Distance(double* X, int m, double * Y, int n){
-    int i,j;
-    double Cost[m][n];
-    double d1, d2, d3;
-    // Initialize
-    Cost[0][0] = fabs( X[0] - Y[0] );
-    for (i = 1; i < m; i++){
-        Cost[i][0] = Cost[i-1][0] + C(X[i], X[i-1], Y[0]);
-    }
-    for ( j = 1; j < n; j++){
-        Cost[0][j] = Cost[0][j-1] + C(Y[j], X[0], Y[j-1]);
-    }
-    // Main Loop
-    for( i = 1; i < m; i++){
-        for (j = 1; j < n; j++){
-            d1 = Cost[i-1][j-1] + fabs(X[i]-Y[j]);
-            d2 = Cost[i-1][j] + C(X[i], X[i-1], Y[j]);
-            d3 = Cost[i][j-1] + C(Y[j], X[i], Y[j-1]);
-            Cost[i][j] = min( d1, min(d2,d3) );
-        }
-    }
-    // Output
-    return Cost[m-1][n-1];
-}
-*/
 
 vector<double> calculateMsmGreedyArray(const vector<double> &X, const vector<double> &Y)
 {
@@ -339,14 +322,16 @@ double msmDistPruned(const vector<double> &X, const vector<double> &Y, int &sako
 }
 
 
-int knn(vector<double> query, vector<vector<double>> sequencefile, vector<int> sclass, int &bandwidth)
+int knn(vector<double> query, vector<vector<double>> sequencefile, vector<int> sclass, const char *bandwidth)
 {
     double bsf = INF;            // best-so-far
     double distance;
     int bclass;
+    int bw;
+    bw = sequencefile[1].size()*atoi(bandwidth)/100;
 
     for (vector<double>::size_type j = 0; j < sequencefile.size(); j++){
-        distance = msmDistPruned(query, sequencefile[j], bandwidth);
+        distance = msmDistPruned(query, sequencefile[j], bw);
         if(distance < bsf)
         {
             bsf = distance;
@@ -362,55 +347,40 @@ int main(  int argc , char *argv[] )
     vector<vector<double>> sequencefile;
     vector<int> qclass;
     vector<int> sclass;
-    double qval;
-    long long i, nearest;
-    int nclass;
-    int tp, qcount;
+    int nclass, tp;
     float acc;
-    if (argc!=4)      error(1);
-
     double t1,t2;          // timer
 
-    int bandwidth;
-    bandwidth = atoi(argv[3]);
-    i = 0;
-    qcount = 0;
+    if (argc!=4)      error(1);
+
+    if(!readData(*argv[1],
+                 *argv[2],
+                 sequencefile,
+                 queryfile,
+                 sclass,
+                 qclass))
+        return 0;
+
     tp = 0;
-
-    if (!readFiles(argv[1], sequencefile, sclass))
-    {
-        error(2);
-        return 0;
-    }
-    if (!readFiles(argv[2], queryfile, qclass))
-    {
-
-        error(2);
-        return 0;
-    }
-
-
-    printf("Read data is compose of %d examples with %d observations each\n\n", queryfile.size(), queryfile[1].size());
 
 
     t1 = clock();
     for (vector<double>::size_type i = 0; i < queryfile.size(); i++){
-        nclass = knn(queryfile[i], sequencefile, sclass, bandwidth);
+        nclass = knn(queryfile[i], sequencefile, sclass, argv[3]);
         if(nclass == qclass[i])   tp++;
-        qcount++;
     }
     t2 = clock();
-    acc = (float)tp/(float)qcount;
+    acc = tp/(float)queryfile.size();
     cout << "tp: " << tp << endl;
-    cout << "qcount: " << qcount << endl;
+    cout << "qcount: " << queryfile.size() << endl;
     cout << "Accuracy: " << acc << endl;
-    cout << "Total Execution Time : " << (t2-t1)/CLOCKS_PER_SEC << " sec" << endl;    char *ptr;
-
+    cout << "Total Execution Time : " << (t2-t1)/CLOCKS_PER_SEC << " sec" << endl;
+    char *ptr;
     ptr = strtok(argv[1], "/");
     ptr = strtok(NULL, "/");
     FILE *rd = NULL;    //result data
     rd = fopen("results.csv", "a");
-    fprintf(rd,"%s%i, %s, %d, %d, %f, %f secs\n", "PMSM with bandwith: ", bandwidth,ptr, qcount, queryfile[0].size(), acc, (t2-t1)/CLOCKS_PER_SEC);
+    fprintf(rd,"%s%i, %s, %d, %d, %f, %f secs\n", "PMSM with bandwith: ", bandwidth,ptr, queryfile.size(), queryfile[0].size(), acc, (t2-t1)/CLOCKS_PER_SEC);
 
     return 0;
 }

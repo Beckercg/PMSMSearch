@@ -22,8 +22,8 @@ void error(const int &id)
     if(id==1)
     {
         cout << "ERROR: Invalid Number of Arguments!" << endl;
-        cout << "Command Usage:   PMSMSearch.exe  data_file  query_file query_length" << endl;
-        cout << "For example  :   PMSMSearch.exe  data.tsv   query.tsv  20" << endl;
+        cout << "Command Usage:   PMSMSearch.exe  data_file  query_file" << endl;
+        cout << "For example  :   PMSMSearch.exe  data.tsv   query.tsv" << endl;
     }
     else if ( id == 2 )
         cout << "Error while open file!" << endl;
@@ -82,13 +82,13 @@ bool readData(const char &queryToRead,
         error(2);
         return 0;
     }
-    printf("Sequence data is compose of %d examples with %d observations each\n\n", sequencefile.size(), sequencefile[0].size());
+    printf("Sequence data is compose of %d examples with %d observations each\n", sequencefile.size(), sequencefile[0].size());
     if (!readFiles(&queryToRead, queryfile, qclass))
     {
         error(2);
         return 0;
     }
-    printf("Query data is compose of %d examples with %d observations each\n", queryfile.size(), queryfile[0].size());
+    printf("Query data is compose of %d examples with %d observations each\n\n", queryfile.size(), queryfile[0].size());
     return 1;
 }
 
@@ -161,7 +161,7 @@ int main(  int argc , char *argv[] )
     float acc;
     double t1,t2;          // timer
 
-    if (argc!=4)      error(1);
+    if (argc!=3)      error(1);
 
     if(!readData(*argv[1],
                  *argv[2],
@@ -183,7 +183,8 @@ int main(  int argc , char *argv[] )
     cout << "tp: " << tp << endl;
     cout << "qcount: " << queryfile.size() << endl;
     cout << "Accuracy: " << acc << endl;
-    cout << "Total Execution Time : " << (t2-t1)/CLOCKS_PER_SEC << " sec" << endl;    char *ptr;
+    cout << "Total Execution Time : " << (t2-t1)/CLOCKS_PER_SEC << " sec" << endl;
+    char *ptr;
     ptr = strtok(argv[1], "/");
     ptr = strtok(NULL, "/");
     FILE *rd = NULL;    //result data
