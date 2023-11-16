@@ -17,7 +17,7 @@
 
 using namespace std;
 
-void error(int id)
+void error(const int &id)
 {
     if(id==1)
     {
@@ -34,7 +34,7 @@ void error(int id)
 bool readFiles(const char *fileToRead,
                vector<vector<double>> &data,
                vector<int> &classValue,
-               char separator = '\t') // default separator is tab
+               const char separator = '\t') // default separator is tab
 {
     ifstream fin(fileToRead);
     string line;
@@ -71,7 +71,29 @@ bool readFiles(const char *fileToRead,
 }
 
 
-double C(double new_point, double x, double y){
+bool readData(const char &queryToRead,
+              const char &sequenceToRead,
+              vector<vector<double>> &queryfile,
+              vector<vector<double>> &sequencefile,
+              vector<int> &qclass,
+              vector<int> &sclass) {
+    if (!readFiles(&sequenceToRead, sequencefile, sclass))
+    {
+        error(2);
+        return 0;
+    }
+    printf("Sequence data is compose of %d examples with %d observations each\n\n", sequencefile.size(), sequencefile[0].size());
+    if (!readFiles(&queryToRead, queryfile, qclass))
+    {
+        error(2);
+        return 0;
+    }
+    printf("Query data is compose of %d examples with %d observations each\n", queryfile.size(), queryfile[0].size());
+    return 1;
+}
+
+
+double C(const double &new_point, const double &x,const double &y){
     double c = 0.1; // Change this value if needed.
     double dist;
     if ( ( (x <= new_point) && (new_point <= y) ) ||
@@ -84,7 +106,7 @@ double C(double new_point, double x, double y){
     return dist;
 }
 
-double MSM_Distance(vector<double> X, vector<double> Y){
+double MSM_Distance(const vector<double> &X, const vector<double> &Y){
     int i,j;
     int m = X.size();
     int n = Y.size();
@@ -101,7 +123,6 @@ double MSM_Distance(vector<double> X, vector<double> Y){
     }
     // Main Loop
     for( i = 1; i < m; i++){
-
         for (j = 1; j < n; j++){
             d1 = Cost[i-1][j-1] + fabs(X[i]-Y[j]);
             d2 = Cost[i-1][j] + C(X[i], X[i-1], Y[j]);
@@ -113,7 +134,7 @@ double MSM_Distance(vector<double> X, vector<double> Y){
     return Cost[m-1][n-1];
 }
 
-int knn(vector<double> query, vector<vector<double>> sequencefile, vector<int> sclass)
+int knn(const vector<double> &query, const vector<vector<double>> &sequencefile, const vector<int> &sclass)
 {
     double bsf = INF;            // best-so-far
     double distance;
@@ -136,55 +157,38 @@ int main(  int argc , char *argv[] )
     vector<vector<double>> sequencefile;
     vector<int> qclass;
     vector<int> sclass;
-    double qval;
-    long long i, nearest;
-    int nclass;
-    int tp, qcount;
+    int nclass, tp;
     float acc;
+    double t1,t2;          // timer
+
     if (argc!=4)      error(1);
 
-    double t1,t2;          // timer
-    t1 = clock();
+    if(!readData(*argv[1],
+                 *argv[2],
+                 sequencefile,
+                 queryfile,
+                 sclass,
+                 qclass))
+        return 0;
 
-
-    i = 0;
-    qcount = 0;
     tp = 0;
-
-    if (!readFiles(argv[1], sequencefile, sclass))
-    {
-        error(2);
-        return 0;
-    }
-    if (!readFiles(argv[2], queryfile, qclass))
-    {
-
-        error(2);
-        return 0;
-    }
-
-
-    printf("Read data is compose of %d examples with %d observations each\n\n", queryfile.size(), queryfile[1].size());
-
-
     t1 = clock();
-    for (vector<double>::size_type i = 0; i < queryfile.size(); i++){
+    for (int i = 0; i < queryfile.size(); i++){
         nclass = knn(queryfile[i], sequencefile, sclass);
         if(nclass == qclass[i])   tp++;
-        qcount++;
     }
     t2 = clock();
-    acc = (float)tp/(float)qcount;
+
+    acc = tp/(float)queryfile.size();
     cout << "tp: " << tp << endl;
-    cout << "qcount: " << qcount << endl;
+    cout << "qcount: " << queryfile.size() << endl;
     cout << "Accuracy: " << acc << endl;
     cout << "Total Execution Time : " << (t2-t1)/CLOCKS_PER_SEC << " sec" << endl;    char *ptr;
-
     ptr = strtok(argv[1], "/");
     ptr = strtok(NULL, "/");
     FILE *rd = NULL;    //result data
     rd = fopen("results.csv", "a");
-    fprintf(rd,"%s, %s, %d, %d, %f, %f secs\n", "MSM",ptr, qcount, queryfile[1].size(), acc, (t2-t1)/CLOCKS_PER_SEC);
+    fprintf(rd,"%s, %s, %d, %d, %f, %f secs\n", "MSM",ptr, queryfile.size(), queryfile[1].size(), acc, (t2-t1)/CLOCKS_PER_SEC);
     return 0;
 }
 
