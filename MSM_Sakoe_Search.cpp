@@ -172,6 +172,8 @@ int main(  int argc , char *argv[] )
 
     if (argc!=4)      error(1);
 
+    FILE *rd = NULL;    //result data
+    rd = fopen("results.csv", "a");
     if(!readData(*argv[1],
                  *argv[2],
                  sequencefile,
@@ -179,7 +181,6 @@ int main(  int argc , char *argv[] )
                  sclass,
                  qclass))
         return 0;
-
     t1 = clock();
     for (vector<double>::size_type i = 0; i < queryfile.size(); i++){
         nclass = knn(queryfile[i], sequencefile, sclass, argv[3]);
@@ -194,9 +195,8 @@ int main(  int argc , char *argv[] )
     char *ptr;
     ptr = strtok(argv[1], "/");
     ptr = strtok(NULL, "/");
-    FILE *rd = NULL;    //result data
-    rd = fopen("results.csv", "a");
-    fprintf(rd,"%s%i%, %s, %d, %d, %f, %f secs\n", "MSM with bandwidth: ", argv[3], ptr, queryfile.size(), queryfile[1].size(), acc, (t2-t1)/CLOCKS_PER_SEC);
+    fprintf(rd,"%s%d\%, %s, %d, %d, %f, %f secs\n", "MSM with bandwidth: ", argv[3], ptr, queryfile.size(), queryfile[1].size(), acc, (t2-t1)/CLOCKS_PER_SEC);
+    fclose(rd);
     return 0;
 }
 

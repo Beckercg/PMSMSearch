@@ -6,6 +6,8 @@
 #include <iostream>
 #include <fstream>
 #include <sstream>
+#include <algorithm>
+#include <random>
 #include <ctime>
 #include <vector>
 #include <cmath>
@@ -211,7 +213,7 @@ double getLowerBound(int xCoord, int yCoord)
  * @return pair: first Double: Distance, second Double: relative amount of pruned cells
  * msmDistPruned by Jana Holznigenkemper
  */
-double msmDistPruned(const vector<double> &X, const vector<double> &Y, int &sakoe_bandwith)
+double msmDistPruned(const vector<double> &X, const vector<double> &Y, const int sakoe_bandwidth)
 {
 
     const vector<double>::size_type m = X.size();
@@ -257,7 +259,7 @@ double msmDistPruned(const vector<double> &X, const vector<double> &Y, int &sako
 
         // compute bandwidth regarding the upper bound
         unsigned int bandwidth = computeBandwidth(upperBound);
-        if (sakoe_bandwith < bandwidth) bandwidth = sakoe_bandwith;
+        if (sakoe_bandwidth < bandwidth) bandwidth = sakoe_bandwidth;
         unsigned int start = (bandwidth > i) ? sc : max(sc, i - bandwidth);
 
         unsigned int end = min(i + bandwidth + 1, tmpArray.size());
@@ -322,15 +324,13 @@ double msmDistPruned(const vector<double> &X, const vector<double> &Y, int &sako
 }
 
 
-int knn(vector<double> query, vector<vector<double>> sequencefile, vector<int> sclass, const char *bandwidth)
+int knn(const vector<double> &query, const vector<vector<double>> &sequencefile, const vector<int> &sclass, const int &bandwidth)
 {
     double bsf = INF;            // best-so-far
     double distance;
     int bclass;
-    int bw;
-    bw = sequencefile[1].size()*atoi(bandwidth)/100;
     for (vector<double>::size_type j = 0; j < sequencefile.size(); j++){
-        distance = msmDistPruned(query, sequencefile[j], bw);
+        distance = msmDistPruned(query, sequencefile[j], bandwidth);
         if(distance < bsf)
         {
             bsf = distance;
@@ -339,6 +339,80 @@ int knn(vector<double> query, vector<vector<double>> sequencefile, vector<int> s
     }
     return bclass;
 }
+
+double crossValidate(vector<vector<double>>& sequenceFile, vector<int>& sclass, int bandwidth) {
+    int foldSize = sequenceFile.size() / 10;
+    int tp = 0;
+    int pcount = 0;
+    double averageAcc =0;
+
+    // Shuffling the indices for random splitting
+    vector<int> indices(sequenceFile.size());
+    iota(indices.begin(), indices.end(), 0);
+    random_device rd;
+    mt19937 g(rd());
+    shuffle(indices.begin(), indices.end(), g);
+
+    for (int i = 0; i < 10; ++i) {
+        // Creating train and test sets for this fold
+        vector<vector<double>> trainSet;
+        vector<int> trainClass;
+        vector<vector<double>> testSet;
+        vector<int> testClass;
+        for (int j = 0; j < sequenceFile.size(); ++j) {
+            if (j >= i * foldSize && j < (i + 1) * foldSize) {
+                testSet.push_back(sequenceFile[indices[j]]);
+                testClass.push_back(sclass[indices[j]]);
+            } else {
+                trainSet.push_back(sequenceFile[indices[j]]);
+                trainClass.push_back(sclass[indices[j]]);
+            }
+        }
+
+        // Testing the classifier
+        for (int k = 0; k < testSet.size(); ++k) {
+            int predicted = knn(testSet[k], trainSet, trainClass, bandwidth);
+            if (predicted == testClass[k]) {
+                ++tp;
+            }
+            ++pcount;
+        }
+        averageAcc +=  0.1 * tp * 100 / (double) pcount;
+        cout << "Acc: " << tp * 100 / (double) pcount << "for iteration: " << i << endl;
+        cout << "avAcc: " << averageAcc << endl;
+    }
+
+    // Calculating the accuracy
+    return averageAcc;
+}
+
+
+int findOptimalBandwidth(vector<vector<double>> sequencefile, vector<int> sclass) {
+    int bestBandwidth = sequencefile[0].size();
+    double bestAccuracy = 0;
+
+    for (int bandwidth = 0; bandwidth <= sequencefile[0].size(); bandwidth += 10) {
+        cout << "bandwidth: " << bandwidth << endl;
+        double accuracy = crossValidate(sequencefile, sclass, bandwidth);
+        if (accuracy > bestAccuracy) {
+            bestAccuracy = accuracy;
+            bestBandwidth = bandwidth;
+            cout << "bestBandwidth: " << bestBandwidth << endl;
+        }
+    }
+    //without last
+    /*
+    cout << "bandwidth: " << sequencefile[0].size()-1 << endl;
+    double accuracy = crossValidate(sequencefile, sclass, sequencefile[0].size());
+    if (accuracy > bestAccuracy) {
+        bestAccuracy = accuracy;
+        bestBandwidth = sequencefile[0].size();
+        cout << "bestBandwidth: " << bestBandwidth << endl;
+    }
+     */
+    return bestBandwidth;
+}
+
 
 int main(  int argc , char *argv[] )
 {
@@ -350,7 +424,7 @@ int main(  int argc , char *argv[] )
     float acc;
     double t1,t2;          // timer
 
-    if (argc!=4)      error(1);
+    if (argc!=3)      error(1);
 
     if(!readData(*argv[1],
                  *argv[2],
@@ -363,14 +437,16 @@ int main(  int argc , char *argv[] )
     tp = 0;
 
 
+    int bandwidth = findOptimalBandwidth(sequencefile, sclass);
+
     t1 = clock();
     for (vector<double>::size_type i = 0; i < queryfile.size(); i++){
-        nclass = knn(queryfile[i], sequencefile, sclass, argv[3]);
+        nclass = knn(queryfile[i], sequencefile, sclass, bandwidth);
         if(nclass == qclass[i])   tp++;
+        cout << "queryfile: " << i << endl;
     }
     t2 = clock();
     acc = tp/(float)queryfile.size();
-    cout << "argv: " << argv[3] << endl;
     cout << "tp: " << tp << endl;
     cout << "qcount: " << queryfile.size() << endl;
     cout << "Accuracy: " << acc << endl;
@@ -380,7 +456,7 @@ int main(  int argc , char *argv[] )
     ptr = strtok(NULL, "/");
     FILE *rd = NULL;    //result data
     rd = fopen("results.csv", "a");
-    fprintf(rd,"%s%s Percent, %s, %d, %d, %f, %f secs\n", "PMSM with bandwith: ", argv[3], ptr, queryfile.size(), queryfile[0].size(), acc, (t2-t1)/CLOCKS_PER_SEC);
+    fprintf(rd,"%s%d , %s, %d, %d, %f, %f secs\n", "PMSM with bandwith: ", bandwidth, ptr, queryfile.size(), queryfile[0].size(), acc, (t2-t1)/CLOCKS_PER_SEC);
 
     return 0;
 }

@@ -244,6 +244,7 @@ int main(  int argc , char *argv[] )
 
 
     double bandwidth = findOptimalBandwidth(sequencefile, sclass);
+    tp=0;
     t1 = clock();
     for (vector<double>::size_type i = 0; i < queryfile.size(); i++){
         nclass = knn(queryfile[i], sequencefile, sclass, bandwidth);
