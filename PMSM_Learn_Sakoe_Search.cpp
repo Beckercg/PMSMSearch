@@ -456,7 +456,7 @@ int main(  int argc , char *argv[] )
     ptr = strtok(NULL, "/");
     FILE *rd = NULL;    //result data
     rd = fopen("results.csv", "a");
-    fprintf(rd,"%s%d , %s, %d, %d, %f, %f secs\n", "PMSM with bandwith: ", bandwidth, ptr, queryfile.size(), queryfile[0].size(), acc, (t2-t1)/CLOCKS_PER_SEC);
+    fprintf(rd,"%s%d , %s, %d, %d, %f, %f secs\n", "PMSM with learned bandwith: ", bandwidth, ptr, queryfile.size(), queryfile[0].size(), acc, (t2-t1)/CLOCKS_PER_SEC);
 
     return 0;
 }
