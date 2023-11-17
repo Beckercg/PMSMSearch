@@ -352,8 +352,8 @@ int main(  int argc , char *argv[] )
 
     if (argc!=4)      error(1);
 
-    if(!readData(*argv[1],
-                 *argv[2],
+    if(!readData(*argv[2],
+                 *argv[1],
                  sequencefile,
                  queryfile,
                  sclass,

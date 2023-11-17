@@ -1,6 +1,11 @@
 /UCRArchive_2018/
-PMSM_Search.exe
 MSM_Search.exe
+MSM_Sakoe_Search.exe
+MSM_Learn_Sakoe_Search.exe
+PMSM_Search.exe
+PMSM_Sakoe_Search.exe
+PMSM_Learn_Sakoe_Search.exe
 .idea
 modules.xml
 vcs.xml
+results.csv

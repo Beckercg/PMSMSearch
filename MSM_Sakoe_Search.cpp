@@ -174,8 +174,8 @@ int main(  int argc , char *argv[] )
 
     FILE *rd = NULL;    //result data
     rd = fopen("results.csv", "a");
-    if(!readData(*argv[1],
-                 *argv[2],
+    if(!readData(*argv[2],
+                 *argv[1],
                  sequencefile,
                  queryfile,
                  sclass,
