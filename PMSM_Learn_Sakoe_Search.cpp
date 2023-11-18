@@ -33,8 +33,8 @@ void error(int id)
     if(id==1)
     {
         cout << "ERROR: Invalid Number of Arguments!" << endl;
-        cout << "Command Usage:   PMSMSearch.exe  data_file  query_file bandwidth(in Percent)" << endl;
-        cout << "For example  :   PMSMSearch.exe  data.tsv   query.tsv  20" << endl;
+        cout << "Command Usage:   PMSMSearch.exe  data_file  query_file bw_step_size cv_split_count" << endl;
+        cout << "For example  :   PMSMSearch.exe  data.tsv   query.tsv  10 10" << endl;
     }
     else if ( id == 2 )
         cout << "Error while open file!" << endl;
@@ -258,11 +258,14 @@ double msmDistPruned(const vector<double> &X, const vector<double> &Y, const int
     {
 
         // compute bandwidth regarding the upper bound
-        unsigned int bandwidth = computeBandwidth(upperBound);
-        if (sakoe_bandwidth < bandwidth) bandwidth = sakoe_bandwidth;
-        unsigned int start = (bandwidth > i) ? sc : max(sc, i - bandwidth);
+        unsigned int local_bandwidth = computeBandwidth(upperBound);
+        if (sakoe_bandwidth < local_bandwidth) local_bandwidth = sakoe_bandwidth;
 
-        unsigned int end = min(i + bandwidth + 1, tmpArray.size());
+        unsigned int start = max(1,i-sakoe_bandwidth);
+        unsigned int end = min(m,i+sakoe_bandwidth);
+        //unsigned int start = (local_bandwidth > i) ? sc : max(sc, i - local_bandwidth);
+
+        //unsigned int end = min(i + local_bandwidth + 1, tmpArray.size());
 
         double xi = ts1[i];
         // the index for the pruned end cannot be lower than the diagonal
@@ -274,7 +277,6 @@ double msmDistPruned(const vector<double> &X, const vector<double> &Y, const int
         // column index
         for (vector<double>::size_type j = start; j < end; j++)
         {
-
             double yj = ts2[j];
 
             double d1, d2, d3;
@@ -287,6 +289,7 @@ double msmDistPruned(const vector<double> &X, const vector<double> &Y, const int
             // store old entry before overwriting
             tmp = tmpArray[j];
             tmpArray[j] = min(d1, min(d2, d3));
+            if(tmpArray[j] != d1 ) cout << "false" << endl;
 
             // PruningExperiments strategy
             double lb = getLowerBound(i, j);
@@ -340,8 +343,8 @@ int knn(const vector<double> &query, const vector<vector<double>> &sequencefile,
     return bclass;
 }
 
-double crossValidate(vector<vector<double>>& sequenceFile, vector<int>& sclass, int bandwidth) {
-    int foldSize = sequenceFile.size() / 10;
+double crossValidate(vector<vector<double>>& sequenceFile, vector<int>& sclass, int bandwidth, const int cv_split_count) {
+    int foldSize = sequenceFile.size() / cv_split_count;
     int tp = 0;
     int pcount = 0;
     double averageAcc =0;
@@ -353,7 +356,7 @@ double crossValidate(vector<vector<double>>& sequenceFile, vector<int>& sclass, 
     mt19937 g(rd());
     shuffle(indices.begin(), indices.end(), g);
 
-    for (int i = 0; i < 10; ++i) {
+    for (int i = 0; i < cv_split_count; ++i) {
         // Creating train and test sets for this fold
         vector<vector<double>> trainSet;
         vector<int> trainClass;
@@ -377,7 +380,7 @@ double crossValidate(vector<vector<double>>& sequenceFile, vector<int>& sclass, 
             }
             ++pcount;
         }
-        averageAcc +=  0.1 * tp * 100 / (double) pcount;
+        averageAcc +=  tp * 100 / (double) pcount * (1 / (double) cv_split_count);
         cout << "Acc: " << tp * 100 / (double) pcount << "for iteration: " << i << endl;
         cout << "avAcc: " << averageAcc << endl;
     }
@@ -387,29 +390,19 @@ double crossValidate(vector<vector<double>>& sequenceFile, vector<int>& sclass, 
 }
 
 
-int findOptimalBandwidth(vector<vector<double>> sequencefile, vector<int> sclass) {
+int findOptimalBandwidth(vector<vector<double>> sequencefile, vector<int> sclass, const int &bw_step_size, const int &cv_split_count) {
     int bestBandwidth = sequencefile[0].size();
     double bestAccuracy = 0;
 
-    for (int bandwidth = 0; bandwidth <= sequencefile[0].size(); bandwidth += 10) {
+    for (int bandwidth = 0; bandwidth <= sequencefile[0].size(); bandwidth += bw_step_size) {
         cout << "bandwidth: " << bandwidth << endl;
-        double accuracy = crossValidate(sequencefile, sclass, bandwidth);
+        double accuracy = crossValidate(sequencefile, sclass, bandwidth, cv_split_count);
         if (accuracy > bestAccuracy) {
             bestAccuracy = accuracy;
             bestBandwidth = bandwidth;
             cout << "bestBandwidth: " << bestBandwidth << endl;
         }
     }
-    //without last
-    /*
-    cout << "bandwidth: " << sequencefile[0].size()-1 << endl;
-    double accuracy = crossValidate(sequencefile, sclass, sequencefile[0].size());
-    if (accuracy > bestAccuracy) {
-        bestAccuracy = accuracy;
-        bestBandwidth = sequencefile[0].size();
-        cout << "bestBandwidth: " << bestBandwidth << endl;
-    }
-     */
     return bestBandwidth;
 }
 
@@ -424,20 +417,23 @@ int main(  int argc , char *argv[] )
     float acc;
     double t1,t2;          // timer
 
-    if (argc!=3)      error(1);
+    if (argc!=5)      error(1);
 
     if(!readData(*argv[2],
                  *argv[1],
-                 sequencefile,
                  queryfile,
-                 sclass,
-                 qclass))
+                 sequencefile,
+                 qclass,
+                 sclass))
         return 0;
 
     tp = 0;
 
-
-    int bandwidth = findOptimalBandwidth(sequencefile, sclass);
+    int bw_step_size;
+    bw_step_size = atoi(argv[3]);
+    int cv_split_count;
+    cv_split_count = atoi(argv[4]);
+    int bandwidth = findOptimalBandwidth(sequencefile, sclass, bw_step_size, cv_split_count);
 
     t1 = clock();
     for (vector<double>::size_type i = 0; i < queryfile.size(); i++){

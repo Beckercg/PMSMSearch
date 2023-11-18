@@ -125,7 +125,7 @@ double MSM_Distance(vector<double> X, vector<double> Y, int bandwidth){
     // Main Loop
     for( i = 1; i < m; i++){
         start = max(1,i-bandwidth);
-        end = min(n,i+bandwidth);
+        end = min(m,i+bandwidth);
         if(start>end)
             error(3);
         for (j = start; j < end; j++){
@@ -213,12 +213,15 @@ double findOptimalBandwidth(vector<vector<double>> sequencefile, vector<int> scl
             cout << "bestBandwidth: " << bestBandwidth << endl;
         }
     }
+    //without last
+    /*
     double accuracy = crossValidate(sequencefile, sclass, sequencefile[0].size());
     if (accuracy > bestAccuracy) {
         bestAccuracy = accuracy;
         bestBandwidth = sequencefile[0].size();
         cout << "bestBandwidth: " << bestBandwidth << endl;
     }
+     */
     return bestBandwidth;
 }
 
@@ -236,10 +239,10 @@ int main(  int argc , char *argv[] )
 
     if(!readData(*argv[2],
                  *argv[1],
-                 sequencefile,
                  queryfile,
-                 sclass,
-                 qclass))
+                 sequencefile,
+                 qclass,
+                 sclass))
         return 0;
 
 
@@ -251,6 +254,7 @@ int main(  int argc , char *argv[] )
         if(nclass == qclass[i])   tp++;
     }
 
+    t2 = clock();
     acc = tp/(float)queryfile.size();
     cout << "tp: " << tp << endl;
     cout << "qcount: " << queryfile.size() << endl;

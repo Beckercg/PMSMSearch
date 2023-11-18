@@ -211,7 +211,7 @@ double getLowerBound(int xCoord, int yCoord)
  * @return pair: first Double: Distance, second Double: relative amount of pruned cells
  * msmDistPruned by Jana Holznigenkemper
  */
-double msmDistPruned(const vector<double> &X, const vector<double> &Y, int &sakoe_bandwith)
+double msmDistPruned(const vector<double> &X, const vector<double> &Y, int &sakoe_bandwidth)
 {
 
     const vector<double>::size_type m = X.size();
@@ -237,6 +237,7 @@ double msmDistPruned(const vector<double> &X, const vector<double> &Y, int &sako
     // value storing the first "real value" of the array before overwriting it
     //  the first value of the first row has to be 0
     double tmp = 0;
+    tmpArray[0] = 0;
 
     // index for pruning start and end of row
     unsigned int sc = 1;
@@ -256,12 +257,14 @@ double msmDistPruned(const vector<double> &X, const vector<double> &Y, int &sako
     {
 
         // compute bandwidth regarding the upper bound
-        unsigned int bandwidth = computeBandwidth(upperBound);
-        if (sakoe_bandwith < bandwidth) bandwidth = sakoe_bandwith;
-        unsigned int start = (bandwidth > i) ? sc : max(sc, i - bandwidth);
+        unsigned int local_bandwidth = computeBandwidth(upperBound);
+        if (sakoe_bandwidth < local_bandwidth) local_bandwidth = sakoe_bandwidth;
+        //unsigned int start = (sakoe_bandwith > i) ? sc : max(sc, i - local_bandwidth);
 
-        unsigned int end = min(i + bandwidth + 1, tmpArray.size());
+        //unsigned int end = min(i + local_bandwidth + 1, tmpArray.size());
 
+        unsigned int start = max(1,i-sakoe_bandwidth);
+        unsigned int end = min(m,i+sakoe_bandwidth);
         double xi = ts1[i];
         // the index for the pruned end cannot be lower than the diagonal
         // All entries on the diagonal have to be equal or smaller than
@@ -270,22 +273,24 @@ double msmDistPruned(const vector<double> &X, const vector<double> &Y, int &sako
         smallerFound = false;
 
         // column index
-        for (vector<double>::size_type j = start; j < end; j++)
+        for (vector<double>::size_type j = start; j <= end; j++)
         {
 
             double yj = ts2[j];
 
             double d1, d2, d3;
-            d1 = tmp + abs(xi - yj);
+            d1 = tmpArray[j - 1] + abs(xi - yj);
             // merge
             d2 = tmpArray[j] + C(xi, ts1[i - 1], yj);
             // split
             d3 = tmpArray[j - 1] + C(yj, xi, ts2[j - 1]);
-
+            cout << "d1: " << d1 << " d2: " << d2 << " d3: " << d3 << endl;
+            cout << "tmpArray[j-1]: " << tmpArray[j-1] << " tmpArray[j]: " << tmpArray[j] << endl;
+            cout << "x: " << xi << " y: " << yj << endl;
+            cout << "tmp: " << tmp << endl;
             // store old entry before overwriting
             tmp = tmpArray[j];
             tmpArray[j] = min(d1, min(d2, d3));
-
             // PruningExperiments strategy
             double lb = getLowerBound(i, j);
             if ((tmpArray[j] + lb) > upperBound)
@@ -322,15 +327,13 @@ double msmDistPruned(const vector<double> &X, const vector<double> &Y, int &sako
 }
 
 
-int knn(vector<double> query, vector<vector<double>> sequencefile, vector<int> sclass, const char *bandwidth)
+int knn(const vector<double> query, const vector<vector<double>> sequencefile, const vector<int> sclass, int &bandwidth)
 {
     double bsf = INF;            // best-so-far
     double distance;
     int bclass;
-    int bw;
-    bw = sequencefile[1].size()*atoi(bandwidth)/100;
     for (vector<double>::size_type j = 0; j < sequencefile.size(); j++){
-        distance = msmDistPruned(query, sequencefile[j], bw);
+        distance = msmDistPruned(query, sequencefile[j], bandwidth);
         if(distance < bsf)
         {
             bsf = distance;
@@ -354,18 +357,21 @@ int main(  int argc , char *argv[] )
 
     if(!readData(*argv[2],
                  *argv[1],
-                 sequencefile,
                  queryfile,
-                 sclass,
-                 qclass))
+                 sequencefile,
+                 qclass,
+                 sclass))
         return 0;
 
     tp = 0;
 
 
     t1 = clock();
+    int bandwidth;
+    bandwidth = atoi(argv[3]);
+
     for (vector<double>::size_type i = 0; i < queryfile.size(); i++){
-        nclass = knn(queryfile[i], sequencefile, sclass, argv[3]);
+        nclass = knn(queryfile[i], sequencefile, sclass, bandwidth);
         if(nclass == qclass[i])   tp++;
     }
     t2 = clock();
@@ -380,7 +386,7 @@ int main(  int argc , char *argv[] )
     ptr = strtok(NULL, "/");
     FILE *rd = NULL;    //result data
     rd = fopen("results.csv", "a");
-    fprintf(rd,"%s%s Percent, %s, %d, %d, %f, %f secs\n", "PMSM with bandwith: ", argv[3], ptr, queryfile.size(), queryfile[0].size(), acc, (t2-t1)/CLOCKS_PER_SEC);
+    fprintf(rd,"%s%s , %s, %d, %d, %f, %f secs\n", "PMSM with bandwith: ", argv[3], ptr, queryfile.size(), queryfile[0].size(), acc, (t2-t1)/CLOCKS_PER_SEC);
 
     return 0;
 }

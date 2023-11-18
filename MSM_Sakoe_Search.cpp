@@ -113,28 +113,32 @@ double MSM_Distance(vector<double> X, vector<double> Y, int bandwidth){
     double Cost[m][n];
     double d1, d2, d3;
 
+    for ( i = 0; i < m; i++){
+        for (j = 0; j < n; j++){
+            Cost[i][j] = INF;
+        }
+    }
     int start;
     int end;
     // Initialize
     Cost[0][0] = fabs( X[0] - Y[0] );
-    for (i = 1; i < m; i++){
+    for (i = 1; i < i+bandwidth; i++){
         Cost[i][0] = Cost[i-1][0] + C(X[i], X[i-1], Y[0]);
     }
-    for ( j = 1; j < n; j++){
+    for ( j = 1; j < i+bandwidth; j++){
         Cost[0][j] = Cost[0][j-1] + C(Y[j], X[0], Y[j-1]);
     }
     // length of query
     // Main Loop
     for( i = 1; i < m; i++){
         start = max(1,i-bandwidth);
-        end = min(n,i+bandwidth);
-        if(start>end)
-            error(3);
-        for (j = start; j < end; j++){
+        end = min(m,i+bandwidth);
+        for (j = start; j <= end; j++){
             d1 = Cost[i-1][j-1] + fabs(X[i]-Y[j]);
             d2 = Cost[i-1][j] + C(X[i], X[i-1], Y[j]);
             d3 = Cost[i][j-1] + C(Y[j], X[i], Y[j-1]);
             Cost[i][j] = min( d1, min(d2,d3) );
+            if (d1 != Cost[i][j]) cout << "j " << j << " i " << i << " Cost[i-1][j] " <<  Cost[i-1][j] << " Cost[i][j-1] " << Cost[i][j-1] << endl;
         }
     }
     // Output
@@ -142,15 +146,13 @@ double MSM_Distance(vector<double> X, vector<double> Y, int bandwidth){
 }
 
 
-int knn(vector<double> query, vector<vector<double>> sequencefile, vector<int> sclass, const char *bandwidth)
+int knn(vector<double> query, vector<vector<double>> sequencefile, vector<int> sclass, int &bandwidth)
 {
     double bsf = INF;            // best-so-far
     double distance;
     int bclass;
-    int bw;
-    bw = sequencefile[1].size()*atoi(bandwidth)/100;
     for (vector<double>::size_type j = 0; j < sequencefile.size(); j++){
-        distance = MSM_Distance(query, sequencefile[j], bw);
+        distance = MSM_Distance(query, sequencefile[j], bandwidth);
         if(distance < bsf)
         {
             bsf = distance;
@@ -172,18 +174,18 @@ int main(  int argc , char *argv[] )
 
     if (argc!=4)      error(1);
 
-    FILE *rd = NULL;    //result data
-    rd = fopen("results.csv", "a");
     if(!readData(*argv[2],
                  *argv[1],
-                 sequencefile,
                  queryfile,
-                 sclass,
-                 qclass))
+                 sequencefile,
+                 qclass,
+                 sclass))
         return 0;
     t1 = clock();
+    int bandwidth;
+    bandwidth = atoi(argv[3]);
     for (vector<double>::size_type i = 0; i < queryfile.size(); i++){
-        nclass = knn(queryfile[i], sequencefile, sclass, argv[3]);
+        nclass = knn(queryfile[i], sequencefile, sclass, bandwidth);
         if(nclass == qclass[i])   tp++;
     }
     t2 = clock();
@@ -195,7 +197,9 @@ int main(  int argc , char *argv[] )
     char *ptr;
     ptr = strtok(argv[1], "/");
     ptr = strtok(NULL, "/");
-    fprintf(rd,"%s%d\%, %s, %d, %d, %f, %f secs\n", "MSM with bandwidth: ", argv[3], ptr, queryfile.size(), queryfile[1].size(), acc, (t2-t1)/CLOCKS_PER_SEC);
+    FILE *rd = NULL;    //result data
+    rd = fopen("results.csv", "a");
+    fprintf(rd,"%s%d, %s, %d, %d, %f, %f secs\n", "MSM with bandwidth: ", bandwidth, ptr, queryfile.size(), queryfile[1].size(), acc, (t2-t1)/CLOCKS_PER_SEC);
     fclose(rd);
     return 0;
 }

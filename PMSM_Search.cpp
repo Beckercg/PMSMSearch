@@ -75,7 +75,6 @@ bool readFiles(const char *fileToRead,
         }
         data.push_back(auxTS);
     }
-    printf("Test %d \n", data[0][1]);
     return true;
 }
 
@@ -352,10 +351,10 @@ int main(  int argc , char *argv[] )
 
     if(!readData(*argv[2],
                  *argv[1],
-                 sequencefile,
                  queryfile,
-                 sclass,
-                 qclass))
+                 sequencefile,
+                 qclass,
+                 sclass))
         return 0;
 
     tp = 0;

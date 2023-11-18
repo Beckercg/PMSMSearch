@@ -165,10 +165,10 @@ int main(  int argc , char *argv[] )
 
     if(!readData(*argv[2],
                  *argv[1],
-                 sequencefile,
                  queryfile,
-                 sclass,
-                 qclass))
+                 sequencefile,
+                 qclass,
+                 sclass))
         return 0;
 
     tp = 0;
