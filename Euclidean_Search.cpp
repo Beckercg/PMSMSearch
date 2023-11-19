@@ -93,56 +93,18 @@ bool readData(const char &queryToRead,
     return 1;
 }
 
-double C(double new_point, double x, double y){
-    double c = 0.1; // Change this value if needed.
-    double dist;
-    if ( ( (x <= new_point) && (new_point <= y) ) ||
-         ( (y <= new_point) && (new_point <= x) ) ){
-        dist = c;
-    }
-    else{
-        dist = c + min( fabs(new_point - x), fabs(new_point - y) );
-    }
-    return dist;
-}
 
-double MSM_Distance(vector<double> X, vector<double> Y, int bandwidth){
+double ED_Distance(vector<double> X, vector<double> Y){
     int i,j;
     int m = X.size();
     int n = Y.size();
-    double Cost[m][n];
-    double d1, d2, d3;
+    double distance;
+    distance = 0;
+    for (i = 0; i < m; i++)
+        distance += abs(X[i] - Y[i]);
 
-    for ( i = 0; i < m; i++){
-        for (j = 0; j < n; j++){
-            Cost[i][j] = INF;
-        }
-    }
-    int start;
-    int end;
-    // Initialize
-    Cost[0][0] = fabs( X[0] - Y[0] );
-    for (i = 1; i < i+bandwidth; i++){
-        Cost[i][0] = Cost[i-1][0] + C(X[i], X[i-1], Y[0]);
-    }
-    for ( j = 1; j < i+bandwidth; j++){
-        Cost[0][j] = Cost[0][j-1] + C(Y[j], X[0], Y[j-1]);
-    }
-    // length of query
-    // Main Loop
-    for( i = 1; i < m; i++){
-        start = max(1,i-bandwidth);
-        end = min(m,i+bandwidth);
-        for (j = start; j <= end; j++){
-            d1 = Cost[i-1][j-1] + fabs(X[i]-Y[j]);
-            d2 = Cost[i-1][j] + C(X[i], X[i-1], Y[j]);
-            d3 = Cost[i][j-1] + C(Y[j], X[i], Y[j-1]);
-            Cost[i][j] = min( d1, min(d2,d3) );
-            if (d1 != Cost[i][j]) cout << "j " << j << " i " << i << " Cost[i-1][j] " <<  Cost[i-1][j] << " Cost[i][j-1] " << Cost[i][j-1] << endl;
-        }
-    }
-    // Output
-    return Cost[m-1][n-1];
+
+    return distance;
 }
 
 
@@ -152,7 +114,7 @@ int knn(vector<double> &query, vector<vector<double>> &sequencefile, vector<int>
     double distance;
     int bclass;
     for (vector<double>::size_type j = 0; j < sequencefile.size(); j++){
-        distance = MSM_Distance(query, sequencefile[j], bandwidth);
+        distance = ED_Distance(query, sequencefile[j]);
         if(distance < bsf)
         {
             bsf = distance;

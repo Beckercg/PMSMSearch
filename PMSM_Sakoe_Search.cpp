@@ -253,7 +253,7 @@ double msmDistPruned(const vector<double> &X, const vector<double> &Y, int &sako
 
     //  int counterBandwidth =0;
     // row index
-    for (vector<double>::size_type i = 1; i < tmpArray.size(); i++)
+    for (vector<double>::size_type i = 1; i < m+1; i++)
     {
 
         // compute bandwidth regarding the upper bound
@@ -265,13 +265,24 @@ double msmDistPruned(const vector<double> &X, const vector<double> &Y, int &sako
 
         unsigned int start = max(1,i-sakoe_bandwidth);
         unsigned int end = min(m,i+sakoe_bandwidth);
+
+
         double xi = ts1[i];
+
+
+        tmp = tmpArray[start - 1];
+        tmpArray[0] = INF;
+        for (int k = 0; k < start; k++) {
+            tmpArray[k] = INF;
+        }
+        for (int k = end + 1; k <= m; k++) {
+            tmpArray[k] = INF;
+        }
         // the index for the pruned end cannot be lower than the diagonal
         // All entries on the diagonal have to be equal or smaller than
         // the upper bound (Euclidean distance = diagonal path)
         ecNext = i;
         smallerFound = false;
-
         // column index
         for (vector<double>::size_type j = start; j <= end; j++)
         {
@@ -279,61 +290,38 @@ double msmDistPruned(const vector<double> &X, const vector<double> &Y, int &sako
             double yj = ts2[j];
 
             double d1, d2, d3;
-            d1 = tmpArray[j - 1] + abs(xi - yj);
+            d1 = tmp + abs(xi - yj);
             // merge
             d2 = tmpArray[j] + C(xi, ts1[i - 1], yj);
             // split
             d3 = tmpArray[j - 1] + C(yj, xi, ts2[j - 1]);
+            /*
             cout << "d1: " << d1 << " d2: " << d2 << " d3: " << d3 << endl;
             cout << "tmpArray[j-1]: " << tmpArray[j-1] << " tmpArray[j]: " << tmpArray[j] << endl;
             cout << "x: " << xi << " y: " << yj << endl;
             cout << "tmp: " << tmp << endl;
+            */
             // store old entry before overwriting
             tmp = tmpArray[j];
             tmpArray[j] = min(d1, min(d2, d3));
             // PruningExperiments strategy
-            double lb = getLowerBound(i, j);
-            if ((tmpArray[j] + lb) > upperBound)
-            {
-                if (!smallerFound)
-                    sc = j + 1;
-                if (j > ec)
-                {
-                    fill(tmpArray.begin() + j + 1, tmpArray.end(), INF);
-                    break;
-                }
-            }
-            else
-            {
-                smallerFound = true;
-                ecNext = j + 1;
-            }
-
-            if (i == j)
-            {
-                upperBound = tmpArray[j] + upperBoundArray[j] + 0.00001;
-            }
         }
 
-        // tmpArray = this.fillWithInf(1, sc, tmpArray);
-        fill(tmpArray.begin() + 1, tmpArray.begin() + sc, INF);
-
-        // set tmp to infinity since the move computation in the next row is not possible and accesses tmp
-        tmp = INF;
-        ec = ecNext;
     }
 
     return tmpArray[m];
 }
 
 
-int knn(const vector<double> query, const vector<vector<double>> sequencefile, const vector<int> sclass, int &bandwidth)
+int knn(const vector<double> &query, const vector<vector<double>> &sequencefile, const vector<int> &sclass, int &bandwidth)
 {
     double bsf = INF;            // best-so-far
     double distance;
     int bclass;
     for (vector<double>::size_type j = 0; j < sequencefile.size(); j++){
         distance = msmDistPruned(query, sequencefile[j], bandwidth);
+        //cout << "distance" << distance << endl;
+
         if(distance < bsf)
         {
             bsf = distance;
@@ -373,6 +361,7 @@ int main(  int argc , char *argv[] )
     for (vector<double>::size_type i = 0; i < queryfile.size(); i++){
         nclass = knn(queryfile[i], sequencefile, sclass, bandwidth);
         if(nclass == qclass[i])   tp++;
+        else cout << "i" << i <<endl;
     }
     t2 = clock();
     acc = tp/(float)queryfile.size();
