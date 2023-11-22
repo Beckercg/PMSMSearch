@@ -138,7 +138,6 @@ double MSM_Distance(vector<double> X, vector<double> Y, int bandwidth){
             d2 = Cost[i-1][j] + C(X[i], X[i-1], Y[j]);
             d3 = Cost[i][j-1] + C(Y[j], X[i], Y[j-1]);
             Cost[i][j] = min( d1, min(d2,d3) );
-            if (d1 != Cost[i][j]) cout << "j " << j << " i " << i << " Cost[i-1][j] " <<  Cost[i-1][j] << " Cost[i][j-1] " << Cost[i][j-1] << endl;
         }
     }
     // Output
@@ -187,8 +186,6 @@ int main(  int argc , char *argv[] )
     bandwidth = atoi(argv[3]);
     for (vector<double>::size_type i = 0; i < queryfile.size(); i++){
         nclass = knn(queryfile[i], sequencefile, sclass, bandwidth);
-        if(nclass == qclass[i])   tp++;
-        else cout << "i" << i <<endl;
     }
     t2 = clock();
     acc = tp/(float)queryfile.size();

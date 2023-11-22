@@ -219,8 +219,8 @@ double msmDistPruned(const vector<double> &X, const vector<double> &Y, int &sako
     vector<double> upperBoundArray = calculateMsmGreedyArray(X, Y);
     double upperBound = upperBoundArray[0] + 0.0000001;
 
-    vector<double> ts1 = vector<double>(1, INF);
-    vector<double> ts2 = vector<double>(1, INF);
+    vector<double> ts1 = X;
+    vector<double> ts2 = Y;
 
     ts1.reserve(m + 1);
     ts2.reserve(m + 1);
@@ -232,12 +232,18 @@ double msmDistPruned(const vector<double> &X, const vector<double> &Y, int &sako
     // Create an array with one extra entry, regarding the whole matrix we initialize
     // MsmDistAStar.Entry [0,0] is set to 0
     // the first row and the first column with inf --> Every entry follows the same computational rules
-    vector<double> tmpArray = vector<double>(m + 1, INF);
+    vector<double> tmpArray = vector<double>(m+1, INF);
 
     // value storing the first "real value" of the array before overwriting it
     //  the first value of the first row has to be 0
     double tmp = 0;
     tmpArray[0] = 0;
+
+
+    // first row is inf
+    for (int k = 1; k < tmpArray.size(); k++) {
+        tmpArray[k] = INF;
+    }
 
     // index for pruning start and end of row
     unsigned int sc = 1;
@@ -257,20 +263,21 @@ double msmDistPruned(const vector<double> &X, const vector<double> &Y, int &sako
     {
 
         // compute bandwidth regarding the upper bound
-        unsigned int local_bandwidth = computeBandwidth(upperBound);
-        if (sakoe_bandwidth < local_bandwidth) local_bandwidth = sakoe_bandwidth;
-        //unsigned int start = (sakoe_bandwith > i) ? sc : max(sc, i - local_bandwidth);
+        //unsigned int local_bandwidth = computeBandwidth(upperBound);
+        //if (sakoe_bandwidth < local_bandwidth) local_bandwidth = sakoe_bandwidth;
+        //unsigned int start = (sakoe_bandwidth > i) ? sc : max(sc, i - local_bandwidth);
 
         //unsigned int end = min(i + local_bandwidth + 1, tmpArray.size());
 
         unsigned int start = max(1,i-sakoe_bandwidth);
-        unsigned int end = min(m,i+sakoe_bandwidth);
+        unsigned int end = min(i+sakoe_bandwidth, m);
 
 
         double xi = ts1[i];
 
-
         tmp = tmpArray[start - 1];
+
+        //first entry is always inf
         tmpArray[0] = INF;
         for (int k = 0; k < start; k++) {
             tmpArray[k] = INF;
@@ -278,17 +285,16 @@ double msmDistPruned(const vector<double> &X, const vector<double> &Y, int &sako
         for (int k = end + 1; k <= m; k++) {
             tmpArray[k] = INF;
         }
+
         // the index for the pruned end cannot be lower than the diagonal
         // All entries on the diagonal have to be equal or smaller than
         // the upper bound (Euclidean distance = diagonal path)
         ecNext = i;
         smallerFound = false;
         // column index
-        for (vector<double>::size_type j = start; j <= end; j++)
-        {
+        for (vector<double>::size_type j = start; j <= end; j++) {
 
             double yj = ts2[j];
-
             double d1, d2, d3;
             d1 = tmp + abs(xi - yj);
             // merge
@@ -298,32 +304,7 @@ double msmDistPruned(const vector<double> &X, const vector<double> &Y, int &sako
             // store old entry before overwriting
             tmp = tmpArray[j];
             tmpArray[j] = min(d1, min(d2, d3));
-            if(tmpArray[j] != d1 ) cout << "false" << endl;
-
-            // PruningExperiments strategy
-            double lb = getLowerBound(i, j);
-            if ((tmpArray[j] + lb) > upperBound)
-            {
-                if (!smallerFound)
-                    sc = j + 1;
-                if (j > ec)
-                {
-                    fill(tmpArray.begin() + j + 1, tmpArray.end(), INF);
-                    break;
-                }
-            }
-            else
-            {
-                smallerFound = true;
-                ecNext = j + 1;
-            }
-
-            if (i == j)
-            {
-                upperBound = tmpArray[j] + upperBoundArray[j] + 0.00001;
-            }
         }
-
         // tmpArray = this.fillWithInf(1, sc, tmpArray);
         fill(tmpArray.begin() + 1, tmpArray.begin() + sc, INF);
 
@@ -331,7 +312,6 @@ double msmDistPruned(const vector<double> &X, const vector<double> &Y, int &sako
         tmp = INF;
         ec = ecNext;
     }
-
     return tmpArray[m];
 }
 
