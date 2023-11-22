@@ -219,8 +219,8 @@ double msmDistPruned(const vector<double> &X, const vector<double> &Y, int &sako
     vector<double> upperBoundArray = calculateMsmGreedyArray(X, Y);
     double upperBound = upperBoundArray[0] + 0.0000001;
 
-    vector<double> ts1 = X;
-    vector<double> ts2 = Y;
+    vector<double> ts1 = std::vector<double>(1, INF);
+    vector<double> ts2 = std::vector<double>(1, INF);
 
     ts1.reserve(m + 1);
     ts2.reserve(m + 1);
@@ -259,18 +259,18 @@ double msmDistPruned(const vector<double> &X, const vector<double> &Y, int &sako
 
     //  int counterBandwidth =0;
     // row index
-    for (vector<double>::size_type i = 1; i < m+1; i++)
+    for (vector<double>::size_type i = 1; i < tmpArray.size(); i++)
     {
 
         // compute bandwidth regarding the upper bound
-        //unsigned int local_bandwidth = computeBandwidth(upperBound);
-        //if (sakoe_bandwidth < local_bandwidth) local_bandwidth = sakoe_bandwidth;
-        //unsigned int start = (sakoe_bandwidth > i) ? sc : max(sc, i - local_bandwidth);
+        unsigned int local_bandwidth = computeBandwidth(upperBound);
+        if (sakoe_bandwidth < local_bandwidth) local_bandwidth = sakoe_bandwidth;
+        unsigned int start = (sakoe_bandwidth > i) ? sc : max(sc, i - local_bandwidth);
 
-        //unsigned int end = min(i + local_bandwidth + 1, tmpArray.size());
+        unsigned int end = min(i+local_bandwidth, m);
 
-        unsigned int start = max(1,i-sakoe_bandwidth);
-        unsigned int end = min(i+sakoe_bandwidth, m);
+        //unsigned int start = max(1,i-sakoe_bandwidth);
+        //unsigned int end = min(i+sakoe_bandwidth, m);
 
 
         double xi = ts1[i];
@@ -304,7 +304,29 @@ double msmDistPruned(const vector<double> &X, const vector<double> &Y, int &sako
             // store old entry before overwriting
             tmp = tmpArray[j];
             tmpArray[j] = min(d1, min(d2, d3));
+            double lb = getLowerBound(i, j);
+            if ((tmpArray[j] + lb) > upperBound)
+            {
+                if (!smallerFound)
+                    sc = j + 1;
+                if (j > ec)
+                {
+                    std::fill(tmpArray.begin() + j + 1, tmpArray.end(), INF);
+                    break;
+                }
+            }
+            else
+            {
+                smallerFound = true;
+                ecNext = j + 1;
+            }
+
+            if (i == j)
+            {
+                upperBound = tmpArray[j] + upperBoundArray[j] + 0.00001;
+            }
         }
+
         // tmpArray = this.fillWithInf(1, sc, tmpArray);
         fill(tmpArray.begin() + 1, tmpArray.begin() + sc, INF);
 
