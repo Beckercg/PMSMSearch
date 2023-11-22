@@ -92,7 +92,7 @@ bool readData(const char &queryToRead,
 
 
 double C(double new_point, double x, double y){
-    double c = 0.1; // Change this value if needed.
+    double c = 0.5; // Change this value if needed.
     double dist;
     if ( ( (x <= new_point) && (new_point <= y) ) ||
          ( (y <= new_point) && (new_point <= x) ) ){

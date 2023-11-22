@@ -21,7 +21,7 @@ using namespace std;
 #define min(x, y) ((x) < (y) ? (x) : (y))
 #define max(x, y) ((x) > (y) ? (x) : (y))
 
-#define C_COST 0.1 // cost for merge and split
+#define C_COST 0.5 // cost for merge and split
 #define INF 1e20   // pseudo infinite number for this code
 
 

@@ -23,7 +23,7 @@ using namespace std;
 #define min(x, y) ((x) < (y) ? (x) : (y))
 #define max(x, y) ((x) > (y) ? (x) : (y))
 
-#define C_COST 0.1 // cost for merge and split
+#define C_COST 0.5 // cost for merge and split
 #define INF 1e20   // pseudo infinite number for this code
 
 
@@ -261,11 +261,11 @@ double msmDistPruned(const vector<double> &X, const vector<double> &Y, const int
         unsigned int local_bandwidth = computeBandwidth(upperBound);
         if (sakoe_bandwidth < local_bandwidth) local_bandwidth = sakoe_bandwidth;
 
-        unsigned int start = max(1,i-sakoe_bandwidth);
-        unsigned int end = min(m,i+sakoe_bandwidth);
-        //unsigned int start = (local_bandwidth > i) ? sc : max(sc, i - local_bandwidth);
+        //unsigned int start = max(1,i-sakoe_bandwidth);
+        //unsigned int end = min(m,i+sakoe_bandwidth);
+        unsigned int start = (local_bandwidth > i) ? sc : max(sc, i - local_bandwidth);
 
-        //unsigned int end = min(i + local_bandwidth + 1, tmpArray.size());
+        unsigned int end = min(i + local_bandwidth + 1, tmpArray.size());
 
         double xi = ts1[i];
         // the index for the pruned end cannot be lower than the diagonal

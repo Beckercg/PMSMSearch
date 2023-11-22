@@ -21,7 +21,7 @@ using namespace std;
 #define min(x, y) ((x) < (y) ? (x) : (y))
 #define max(x, y) ((x) > (y) ? (x) : (y))
 
-#define C_COST 0.1 // cost for merge and split
+#define C_COST 0.5 // cost for merge and split
 #define INF 1e20   // pseudo infinite number for this code
 
 
@@ -295,18 +295,41 @@ double msmDistPruned(const vector<double> &X, const vector<double> &Y, int &sako
             d2 = tmpArray[j] + C(xi, ts1[i - 1], yj);
             // split
             d3 = tmpArray[j - 1] + C(yj, xi, ts2[j - 1]);
-            /*
-            cout << "d1: " << d1 << " d2: " << d2 << " d3: " << d3 << endl;
-            cout << "tmpArray[j-1]: " << tmpArray[j-1] << " tmpArray[j]: " << tmpArray[j] << endl;
-            cout << "x: " << xi << " y: " << yj << endl;
-            cout << "tmp: " << tmp << endl;
-            */
             // store old entry before overwriting
             tmp = tmpArray[j];
             tmpArray[j] = min(d1, min(d2, d3));
+            if(tmpArray[j] != d1 ) cout << "false" << endl;
+
             // PruningExperiments strategy
+            double lb = getLowerBound(i, j);
+            if ((tmpArray[j] + lb) > upperBound)
+            {
+                if (!smallerFound)
+                    sc = j + 1;
+                if (j > ec)
+                {
+                    fill(tmpArray.begin() + j + 1, tmpArray.end(), INF);
+                    break;
+                }
+            }
+            else
+            {
+                smallerFound = true;
+                ecNext = j + 1;
+            }
+
+            if (i == j)
+            {
+                upperBound = tmpArray[j] + upperBoundArray[j] + 0.00001;
+            }
         }
 
+        // tmpArray = this.fillWithInf(1, sc, tmpArray);
+        fill(tmpArray.begin() + 1, tmpArray.begin() + sc, INF);
+
+        // set tmp to infinity since the move computation in the next row is not possible and accesses tmp
+        tmp = INF;
+        ec = ecNext;
     }
 
     return tmpArray[m];
@@ -361,7 +384,6 @@ int main(  int argc , char *argv[] )
     for (vector<double>::size_type i = 0; i < queryfile.size(); i++){
         nclass = knn(queryfile[i], sequencefile, sclass, bandwidth);
         if(nclass == qclass[i])   tp++;
-        else cout << "i" << i <<endl;
     }
     t2 = clock();
     acc = tp/(float)queryfile.size();
