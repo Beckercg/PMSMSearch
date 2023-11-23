@@ -22,8 +22,8 @@ void error(int id)
     if(id==1)
     {
         cout << "ERROR: Invalid Number of Arguments!" << endl;
-        cout << "Command Usage:   PMSMSearch.exe  data_file  query_file bandwidth(in Percent)" << endl;
-        cout << "For example  :   PMSMSearch.exe  data.tsv   query.tsv  50" << endl;
+        cout << "Command Usage:   PMSMSearch.exe  data_file  query_file slope" << endl;
+        cout << "For example  :   PMSMSearch.exe  data.tsv   query.tsv  0.1" << endl;
     }
     else if ( id == 2 )
         cout << "Error while open file!" << endl;
@@ -106,7 +106,7 @@ double C(double new_point, double x, double y){
     return dist;
 }
 
-double MSM_Distance(vector<double> X, vector<double> Y, int bandwidth){
+double MSM_Distance(vector<double> &X, vector<double> &Y, double &slope){
     int i,j;
     int m = X.size();
     int n = Y.size();
@@ -118,16 +118,15 @@ double MSM_Distance(vector<double> X, vector<double> Y, int bandwidth){
             Cost[i][j] = INF;
         }
     }
-    int start;
-    int end;
+
     // Initialize
     Cost[0][0] = fabs( X[0] - Y[0] );
     // length of query
     // Main Loop
     for( i = 1; i < m; i++){
-        start = max(1,i-bandwidth);
-        end = min(m,i+bandwidth);
-        for (j = start; j <= end; j++){
+        for (j = 1; j < n; j++){
+
+            if (j > (slope * i) || i > (slope * j)) continue;
             d1 = Cost[i-1][j-1] + fabs(X[i]-Y[j]);
             d2 = Cost[i-1][j] + C(X[i], X[i-1], Y[j]);
             d3 = Cost[i][j-1] + C(Y[j], X[i], Y[j-1]);
@@ -139,13 +138,13 @@ double MSM_Distance(vector<double> X, vector<double> Y, int bandwidth){
 }
 
 
-int knn(vector<double> &query, vector<vector<double>> &sequencefile, vector<int> &sclass, int &bandwidth)
+int knn(vector<double> &query, vector<vector<double>> &sequencefile, vector<int> &sclass, double &slope)
 {
     double bsf = INF;            // best-so-far
     double distance;
     int bclass;
     for (vector<double>::size_type j = 0; j < sequencefile.size(); j++){
-        distance = MSM_Distance(query, sequencefile[j], bandwidth);
+        distance = MSM_Distance(query, sequencefile[j], slope);
         if(distance < bsf)
         {
             bsf = distance;
@@ -176,10 +175,10 @@ int main(  int argc , char *argv[] )
                  sclass))
         return 0;
     t1 = clock();
-    int bandwidth;
-    bandwidth = atoi(argv[3]);
+    double slope;
+    slope = atoi(argv[3]);
     for (vector<double>::size_type i = 0; i < queryfile.size(); i++){
-        nclass = knn(queryfile[i], sequencefile, sclass, bandwidth);
+        nclass = knn(queryfile[i], sequencefile, sclass, slope);
         if(nclass == qclass[i])   tp++;
     }
     t2 = clock();
@@ -193,7 +192,7 @@ int main(  int argc , char *argv[] )
     ptr = strtok(NULL, "/");
     FILE *rd = NULL;    //result data
     rd = fopen("results.csv", "a");
-    fprintf(rd,"%s%d, %s, %d, %d, %f, %f secs\n", "MSM with bandwidth: ", bandwidth, ptr, queryfile.size(), queryfile[1].size(), acc, (t2-t1)/CLOCKS_PER_SEC);
+    fprintf(rd,"%s%d, %s, %d, %d, %f, %f secs\n", "MSM with Itakura slope: ", slope, ptr, queryfile.size(), queryfile[1].size(), acc, (t2-t1)/CLOCKS_PER_SEC);
     fclose(rd);
     return 0;
 }

@@ -31,8 +31,8 @@ void error(int id)
     if(id==1)
     {
         cout << "ERROR: Invalid Number of Arguments!" << endl;
-        cout << "Command Usage:   PMSMSearch.exe  data_file  query_file bandwidth(in Percent)" << endl;
-        cout << "For example  :   PMSMSearch.exe  data.tsv   query.tsv  20" << endl;
+        cout << "Command Usage:   PMSMSearch.exe  data_file  query_file slope" << endl;
+        cout << "For example  :   PMSMSearch.exe  data.tsv   query.tsv  2.0" << endl;
     }
     else if ( id == 2 )
         cout << "Error while open file!" << endl;
@@ -211,7 +211,7 @@ double getLowerBound(int xCoord, int yCoord)
  * @return pair: first Double: Distance, second Double: relative amount of pruned cells
  * msmDistPruned by Jana Holznigenkemper
  */
-double msmDistPruned(const vector<double> &X, const vector<double> &Y, int &sakoe_bandwidth)
+double msmDistPruned(const vector<double> &X, const vector<double> &Y, double &slope)
 {
 
     const vector<double>::size_type m = X.size();
@@ -264,13 +264,9 @@ double msmDistPruned(const vector<double> &X, const vector<double> &Y, int &sako
 
         // compute bandwidth regarding the upper bound
         unsigned int local_bandwidth = computeBandwidth(upperBound);
-        if (sakoe_bandwidth < local_bandwidth) local_bandwidth = sakoe_bandwidth;
         unsigned int start = (local_bandwidth > i) ? sc : max(sc, i - local_bandwidth);
-
         unsigned int end = min(i+local_bandwidth, m);
 
-        //unsigned int start = max(1,i-sakoe_bandwidth);
-        //unsigned int end = min(i+sakoe_bandwidth, m);
 
 
         double xi = ts1[i];
@@ -294,6 +290,7 @@ double msmDistPruned(const vector<double> &X, const vector<double> &Y, int &sako
         // column index
         for (vector<double>::size_type j = start; j <= end; j++) {
 
+            if (j > (slope * i) || i > (slope * j)) continue;
             double yj = ts2[j];
             double d1, d2, d3;
             d1 = tmp + abs(xi - yj);
@@ -338,13 +335,13 @@ double msmDistPruned(const vector<double> &X, const vector<double> &Y, int &sako
 }
 
 
-int knn(const vector<double> &query, const vector<vector<double>> &sequencefile, const vector<int> &sclass, int &bandwidth)
+int knn(const vector<double> &query, const vector<vector<double>> &sequencefile, const vector<int> &sclass, double &slope)
 {
     double bsf = INF;            // best-so-far
     double distance;
     int bclass;
     for (vector<double>::size_type j = 0; j < sequencefile.size(); j++){
-        distance = msmDistPruned(query, sequencefile[j], bandwidth);
+        distance = msmDistPruned(query, sequencefile[j], slope);
         //cout << "distance" << distance << endl;
 
         if(distance < bsf)
@@ -380,11 +377,11 @@ int main(  int argc , char *argv[] )
 
 
     t1 = clock();
-    int bandwidth;
-    bandwidth = atoi(argv[3]);
+    double slope;
+    slope = atoi(argv[3]);
 
     for (vector<double>::size_type i = 0; i < queryfile.size(); i++){
-        nclass = knn(queryfile[i], sequencefile, sclass, bandwidth);
+        nclass = knn(queryfile[i], sequencefile, sclass, slope);
         if(nclass == qclass[i])   tp++;
     }
     t2 = clock();
@@ -399,7 +396,7 @@ int main(  int argc , char *argv[] )
     ptr = strtok(NULL, "/");
     FILE *rd = NULL;    //result data
     rd = fopen("results.csv", "a");
-    fprintf(rd,"%s%s , %s, %d, %d, %f, %f secs\n", "PMSM with bandwith: ", argv[3], ptr, queryfile.size(), queryfile[0].size(), acc, (t2-t1)/CLOCKS_PER_SEC);
+    fprintf(rd,"%s%s , %s, %d, %d, %f, %f secs\n", "PMSM with Itakura slope: ", argv[3], ptr, queryfile.size(), queryfile[0].size(), acc, (t2-t1)/CLOCKS_PER_SEC);
 
     return 0;
 }
