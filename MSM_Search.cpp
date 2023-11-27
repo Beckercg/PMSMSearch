@@ -110,7 +110,9 @@ double MSM_Distance(const vector<double> &X, const vector<double> &Y){
     int i,j;
     int m = X.size();
     int n = Y.size();
-    double Cost[m][n];
+    double** Cost = new double*[m];
+    for(int i = 0; i < m; ++i)
+        Cost[i] = new double[n];
     double d1, d2, d3;
 
     // Initialize
@@ -124,7 +126,7 @@ double MSM_Distance(const vector<double> &X, const vector<double> &Y){
     // Main Loop
     for( i = 1; i < m; i++){
         for (j = 1; j < n; j++){
-            d1 = Cost[i-1][j-1] + fabs(X[i]-Y[j]);
+                 d1 = Cost[i-1][j-1] + fabs(X[i]-Y[j]);
             d2 = Cost[i-1][j] + C(X[i], X[i-1], Y[j]);
             d3 = Cost[i][j-1] + C(Y[j], X[i], Y[j-1]);
             Cost[i][j] = min( d1, min(d2,d3) );
@@ -161,10 +163,15 @@ int main(  int argc , char *argv[] )
     float acc;
     double t1,t2;          // timer
 
-    if (argc!=3)      error(1);
 
-    if(!readData(*argv[2],
-                 *argv[1],
+    string dataset, querypath ,sequencepath;
+    cout << "Which datset: ";
+    cin >> dataset;
+    querypath = "data/" + dataset + "/" + dataset + "_TEST.tsv";
+    sequencepath = "data/" + dataset + "/" + dataset + "_TRAIN.tsv";
+
+    if(!readData(*querypath.c_str(),
+                 *sequencepath.c_str(),
                  queryfile,
                  sequencefile,
                  qclass,
@@ -184,12 +191,9 @@ int main(  int argc , char *argv[] )
     cout << "qcount: " << queryfile.size() << endl;
     cout << "Accuracy: " << acc << endl;
     cout << "Total Execution Time : " << (t2-t1)/CLOCKS_PER_SEC << " sec" << endl;
-    char *ptr;
-    ptr = strtok(argv[1], "/");
-    ptr = strtok(NULL, "/");
     FILE *rd = NULL;    //result data
     rd = fopen("results.csv", "a");
-    fprintf(rd,"%s, %s, %d, %d, %f, %f secs\n", "MSM",ptr, queryfile.size(), queryfile[1].size(), acc, (t2-t1)/CLOCKS_PER_SEC);
+    fprintf(rd,"%s, %s, %d, %d, %f, %f secs\n", "MSM", dataset.c_str(), queryfile.size(), queryfile[1].size(), acc, (t2-t1)/CLOCKS_PER_SEC);
     return 0;
 }
 

@@ -361,41 +361,54 @@ int main(  int argc , char *argv[] )
     float acc;
     double t1,t2;          // timer
 
-    if (argc!=4)      error(1);
+    string dataset, querypath ,sequencepath;
+    cout << "Which datset: ";
+    cin >> dataset;
+    querypath = "data/" + dataset + "/" + dataset + "_TEST.tsv";
+    sequencepath = "data/" + dataset + "/" + dataset + "_TRAIN.tsv";
 
-    if(!readData(*argv[2],
-                 *argv[1],
+    if(!readData(*querypath.c_str(),
+                 *sequencepath.c_str(),
                  queryfile,
                  sequencefile,
                  qclass,
                  sclass))
         return 0;
 
-    tp = 0;
+    int slope_size;
+    double tmp_slope;
 
-
-    t1 = clock();
-    double slope;
-    slope = atoi(argv[3]);
-
-    for (vector<double>::size_type i = 0; i < queryfile.size(); i++){
-        nclass = knn(queryfile[i], sequencefile, sclass, slope);
-        if(nclass == qclass[i])   tp++;
+    cout << "How many slopes:" << endl;
+    cin >> slope_size;
+    double slopes[slope_size];
+    for (int i = 0; i < slope_size; i++) {
+        cout << "Enter a slope (>=1.0): ";
+        cin >> slopes[i];
     }
-    t2 = clock();
-    acc = tp/(float)queryfile.size();
-    cout << "argv: " << argv[3] << endl;
-    cout << "tp: " << tp << endl;
-    cout << "qcount: " << queryfile.size() << endl;
-    cout << "Accuracy: " << acc << endl;
-    cout << "Total Execution Time : " << (t2-t1)/CLOCKS_PER_SEC << " sec" << endl;
-    char *ptr;
-    ptr = strtok(argv[1], "/");
-    ptr = strtok(NULL, "/");
-    FILE *rd = NULL;    //result data
-    rd = fopen("results.csv", "a");
-    fprintf(rd,"%s%s , %s, %d, %d, %f, %f secs\n", "PMSM with Itakura slope: ", argv[3], ptr, queryfile.size(), queryfile[0].size(), acc, (t2-t1)/CLOCKS_PER_SEC);
 
+
+    for (int i = 0; i < slope_size; i++) {
+        cout << "Current slope: " << endl;
+        cout << slopes[i] << " " << endl;
+        tmp_slope = slopes[i];
+        tp = 0;
+        t1 = clock();
+
+        for (vector<double>::size_type i = 0; i < queryfile.size(); i++) {
+            nclass = knn(queryfile[i], sequencefile, sclass, tmp_slope);
+            if (nclass == qclass[i]) tp++;
+        }
+        t2 = clock();
+        acc = tp / (float) queryfile.size();
+        cout << "tp: " << tp << endl;
+        cout << "qcount: " << queryfile.size() << endl;
+        cout << "Accuracy: " << acc << endl;
+        cout << "Total Execution Time : " << (t2 - t1) / CLOCKS_PER_SEC << " sec" << endl;
+        FILE *rd = NULL;    //result data
+        rd = fopen("results.csv", "a");
+        fprintf(rd, "%s%f , %s, %d, %d, %f, %f secs\n", "PMSM with Itakura slope: ", slopes[i], dataset.c_str(), queryfile.size(),
+                queryfile[0].size(), acc, (t2 - t1) / CLOCKS_PER_SEC);
+    }
     return 0;
 }
 

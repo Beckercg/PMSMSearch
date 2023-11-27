@@ -25,6 +25,7 @@ using namespace std;
 #define INF 1e20   // pseudo infinite number for this code
 
 
+const int cinTerminator = -1;
 
 void error(int id)
 {
@@ -366,41 +367,53 @@ int main(  int argc , char *argv[] )
     float acc;
     double t1,t2;          // timer
 
-    if (argc!=4)      error(1);
+    string dataset, querypath ,sequencepath;
+    cout << "Which datset: ";
+    cin >> dataset;
+    querypath = "data/" + dataset + "/" + dataset + "_TEST.tsv";
+    sequencepath = "data/" + dataset + "/" + dataset + "_TRAIN.tsv";
 
-    if(!readData(*argv[2],
-                 *argv[1],
+    if(!readData(*querypath.c_str(),
+                 *sequencepath.c_str(),
                  queryfile,
                  sequencefile,
                  qclass,
                  sclass))
         return 0;
+    int bw_size, tmp_bw;
 
-    tp = 0;
-
-
-    t1 = clock();
-    int bandwidth;
-    bandwidth = atoi(argv[3]);
-
-    for (vector<double>::size_type i = 0; i < queryfile.size(); i++){
-        nclass = knn(queryfile[i], sequencefile, sclass, bandwidth);
-        if(nclass == qclass[i])   tp++;
+    cout << "How many bandwidths:" << endl;
+    cin >> bw_size;
+    int bandwidths[bw_size];
+    for (int i = 0; i < bw_size; i++) {
+        cout << "Enter a bandwidth (>0): ";
+        cin >> bandwidths[i];
     }
-    t2 = clock();
-    acc = tp/(float)queryfile.size();
-    cout << "argv: " << argv[3] << endl;
-    cout << "tp: " << tp << endl;
-    cout << "qcount: " << queryfile.size() << endl;
-    cout << "Accuracy: " << acc << endl;
-    cout << "Total Execution Time : " << (t2-t1)/CLOCKS_PER_SEC << " sec" << endl;
-    char *ptr;
-    ptr = strtok(argv[1], "/");
-    ptr = strtok(NULL, "/");
-    FILE *rd = NULL;    //result data
-    rd = fopen("results.csv", "a");
-    fprintf(rd,"%s%s , %s, %d, %d, %f, %f secs\n", "PMSM with bandwith: ", argv[3], ptr, queryfile.size(), queryfile[0].size(), acc, (t2-t1)/CLOCKS_PER_SEC);
 
+
+    for (int i = 0; i < bw_size; i++) {
+        cout << "Current bandwidth: " << endl;
+        cout << bandwidths[i] << " " << endl;
+        tmp_bw = bandwidths[i];
+        tp = 0;
+
+        t1 = clock();
+        for (vector<double>::size_type i = 0; i < queryfile.size(); i++) {
+            nclass = knn(queryfile[i], sequencefile, sclass, tmp_bw);
+            if (nclass == qclass[i]) tp++;
+        }
+        t2 = clock();
+        acc = tp / (float) queryfile.size();
+        cout << "tp: " << tp << endl;
+        cout << "qcount: " << queryfile.size() << endl;
+        cout << "Accuracy: " << acc << endl;
+        cout << "Total Execution Time : " << (t2 - t1) / CLOCKS_PER_SEC << " sec" << endl;
+        FILE *rd = NULL;    //result data
+        rd = fopen("results.csv", "a");
+        fprintf(rd, "%s%i , %s, %d, %d, %f, %f secs\n", "PMSM with bandwith: ", bandwidths[i], dataset.c_str(), queryfile.size(),
+                queryfile[0].size(), acc, (t2 - t1) / CLOCKS_PER_SEC);
+
+    }
     return 0;
 }
 
