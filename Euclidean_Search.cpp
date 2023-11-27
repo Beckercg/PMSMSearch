@@ -108,7 +108,7 @@ double ED_Distance(vector<double> X, vector<double> Y){
 }
 
 
-int knn(vector<double> &query, vector<vector<double>> &sequencefile, vector<int> &sclass, int &bandwidth)
+int knn(vector<double> &query, vector<vector<double>> &sequencefile, vector<int> &sclass)
 {
     double bsf = INF;            // best-so-far
     double distance;
@@ -134,21 +134,23 @@ int main(  int argc , char *argv[] )
     float acc;
     double t1,t2;          // timer
 
-    if (argc!=3)      error(1);
+    string dataset, querypath ,sequencepath;
+    cout << "Which datset: ";
+    cin >> dataset;
+    querypath = "data/" + dataset + "/" + dataset + "_TEST.tsv";
+    sequencepath = "data/" + dataset + "/" + dataset + "_TRAIN.tsv";
 
     tp = 0;
-    if(!readData(*argv[2],
-                 *argv[1],
+    if(!readData(*querypath.c_str(),
+                 *sequencepath.c_str(),
                  queryfile,
                  sequencefile,
                  qclass,
                  sclass))
         return 0;
     t1 = clock();
-    int bandwidth;
-    bandwidth = atoi(argv[3]);
     for (vector<double>::size_type i = 0; i < queryfile.size(); i++){
-        nclass = knn(queryfile[i], sequencefile, sclass, bandwidth);
+        nclass = knn(queryfile[i], sequencefile, sclass);
         if(nclass == qclass[i])   tp++;
     }
     t2 = clock();
@@ -157,12 +159,9 @@ int main(  int argc , char *argv[] )
     cout << "qcount: " << queryfile.size() << endl;
     cout << "Accuracy: " << acc << endl;
     cout << "Total Execution Time : " << (t2-t1)/CLOCKS_PER_SEC << " sec" << endl;
-    char *ptr;
-    ptr = strtok(argv[1], "/");
-    ptr = strtok(NULL, "/");
     FILE *rd = NULL;    //result data
     rd = fopen("results.csv", "a");
-    fprintf(rd,"%s, %s, %d, %d, %f, %f secs\n", "ED", ptr, queryfile.size(), queryfile[1].size(), acc, (t2-t1)/CLOCKS_PER_SEC);
+    fprintf(rd,"%s, %s, %d, %d, %f, %f secs\n", "ED", dataset.c_str(), queryfile.size(), queryfile[1].size(), acc, (t2-t1)/CLOCKS_PER_SEC);
     fclose(rd);
     return 0;
 }
