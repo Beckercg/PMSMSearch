@@ -265,32 +265,31 @@ double msmDistPruned(const vector<double> &X, const vector<double> &Y, double &s
         // compute bandwidth regarding the upper bound
         unsigned int local_bandwidth = computeBandwidth(upperBound);
         unsigned int start = (local_bandwidth > i) ? sc : max(sc, i - local_bandwidth);
-        unsigned int end = min(i+local_bandwidth, m);
+        unsigned int end = min(i+local_bandwidth, tmpArray.size());
 
 
+        double start_j = max(start, max((i/slope) , (i-(tmpArray.size()-(1/slope)*tmpArray.size()))*slope));
 
+
+        double end_j = min(end,min(slope *i , (i/slope)+(tmpArray.size()-(1/slope)*tmpArray.size())));
         double xi = ts1[i];
-
-        tmp = tmpArray[start - 1];
-
+        tmp = tmpArray[start_j - 1];
         //first entry is always inf
         tmpArray[0] = INF;
-        for (int k = 0; k < start; k++) {
+        for (int k = 0; k < start_j; k++) {
             tmpArray[k] = INF;
         }
-        for (int k = end + 1; k <= m; k++) {
+        for (int k = end_j + 1; k <= m; k++) {
             tmpArray[k] = INF;
         }
-
         // the index for the pruned end cannot be lower than the diagonal
         // All entries on the diagonal have to be equal or smaller than
         // the upper bound (Euclidean distance = diagonal path)
         ecNext = i;
         smallerFound = false;
         // column index
-        for (vector<double>::size_type j = start; j <= end; j++) {
+        for (vector<double>::size_type j = start_j; j <= end_j; j++) {
 
-            if (j > (slope * i) || i > (slope * j)) continue;
             double yj = ts2[j];
             double d1, d2, d3;
             d1 = tmp + abs(xi - yj);
@@ -343,7 +342,6 @@ int knn(const vector<double> &query, const vector<vector<double>> &sequencefile,
     for (vector<double>::size_type j = 0; j < sequencefile.size(); j++){
         distance = msmDistPruned(query, sequencefile[j], slope);
         //cout << "distance" << distance << endl;
-
         if(distance < bsf)
         {
             bsf = distance;
