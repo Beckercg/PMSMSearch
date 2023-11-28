@@ -121,3 +121,13 @@ PMSM with Itakura slope: 3.000000 , CBF, 900, 128, 0.993333, 9.641000 secs
 PMSM with Itakura slope: 4.000000 , CBF, 900, 128, 0.993333, 10.544000 secs
 PMSM with Itakura slope: 5.000000 , CBF, 900, 128, 0.993333, 11.188000 secs
 ED, ChlorineConcentration, 3840, 166, 0.627344, 1.846000 secs
+PMSM, ChlorineConcentration, 3840, 166, 0.627344, 1000.322000 secs
+PMSM with bandwith: 0 , ChlorineConcentration, 3840, 166, 0.627344, 146.654000 secs
+PMSM with bandwith: 1 , ChlorineConcentration, 3840, 166, 0.627344, 181.947000 secs
+PMSM with bandwith: 5 , ChlorineConcentration, 3840, 166, 0.627344, 312.290000 secs
+PMSM with bandwith: 10 , ChlorineConcentration, 3840, 166, 0.627344, 441.417000 secs
+PMSM with bandwith: 20 , ChlorineConcentration, 3840, 166, 0.627344, 638.492000 secs
+PMSM with bandwith: 30 , ChlorineConcentration, 3840, 166, 0.627344, 782.255000 secs
+PMSM with bandwith: 40 , ChlorineConcentration, 3840, 166, 0.627344, 886.442000 secs
+PMSM with bandwith: 50 , ChlorineConcentration, 3840, 166, 0.627344, 952.937000 secs
+ED, CinCECGTorso, 1380, 1639, 0.944203, 0.483000 secs
