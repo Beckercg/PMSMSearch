@@ -13,9 +13,11 @@
 #include <cstring>
 
 #define INF 1e20       //Pseudo Infitinte number for this code
+#define C_cost 0.5; // Change this value if needed.
 
 
 using namespace std;
+
 
 void error(const int &id)
 {
@@ -94,19 +96,51 @@ bool readData(const char &queryToRead,
 
 
 double C(const double &new_point, const double &x,const double &y){
-    double c = 0.5; // Change this value if needed.
     double dist;
     if ( ( (x <= new_point) && (new_point <= y) ) ||
          ( (y <= new_point) && (new_point <= x) ) ){
-        dist = c;
+        return C_cost;
     }
-    else{
-        dist = c + min( fabs(new_point - x), fabs(new_point - y) );
-    }
+    dist = C_cost + min( fabs(new_point - x), fabs(new_point - y) );
     return dist;
 }
 
 double MSM_Distance(const vector<double> &X, const vector<double> &Y){
+
+    const vector<double>::size_type m = X.size();
+
+    vector<double> ts1 = vector<double>(1, INF);
+    vector<double> ts2 = vector<double>(1, INF);
+
+    ts1.reserve(m + 1);
+    ts2.reserve(m + 1);
+
+    ts1.insert(ts1.end(), X.begin(), X.end());
+    ts2.insert(ts2.end(), Y.begin(), Y.end());
+
+    vector<double> tmpArray = vector<double>(m + 1, INF);
+
+    double tmp = 0;
+
+    for (vector<double>::size_type i = 1; i < tmpArray.size(); i++)
+    {
+        double xi = ts1[i];
+
+        for (vector<double>::size_type j = 1; j <= tmpArray.size(); j++)
+        {
+            double yj = ts2[j];
+            double d1, d2, d3;
+            d1 = tmp + abs(xi - yj);
+            d2 = tmpArray[j] + C(xi, ts1[i - 1], yj);
+            d3 = tmpArray[j - 1] + C(yj, xi, ts2[j - 1]);
+            tmp = tmpArray[j];
+            tmpArray[j] = min(d1, min(d2, d3));
+        }
+        tmp =INF;
+    }
+    return tmpArray[m];
+
+    /*
     int i,j;
     int m = X.size();
     int n = Y.size();
@@ -134,6 +168,7 @@ double MSM_Distance(const vector<double> &X, const vector<double> &Y){
     }
     // Output
     return Cost[m-1][n-1];
+     */
 }
 
 int knn(const vector<double> &query, const vector<vector<double>> &sequencefile, const vector<int> &sclass)
@@ -153,7 +188,7 @@ int knn(const vector<double> &query, const vector<vector<double>> &sequencefile,
     return bclass;
 }
 
-int main(  int argc , char *argv[] )
+int main()
 {
     vector<vector<double>> queryfile;
     vector<vector<double>> sequencefile;
@@ -161,7 +196,7 @@ int main(  int argc , char *argv[] )
     vector<int> sclass;
     int nclass, tp;
     float acc;
-    double t1,t2;          // timer
+    double t1,t2;
 
 
     string dataset, querypath ,sequencepath;
