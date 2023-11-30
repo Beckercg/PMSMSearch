@@ -117,17 +117,18 @@ double C(const double &new_point, const double &x,const double &y){
 double MSM_Distance(const vector<double> &X, const vector<double> &Y){
 
     const vector<double>::size_type m = X.size();
+    const vector<double>::size_type n = Y.size();
 
     vector<double> ts1 = vector<double>(1, INF);
     vector<double> ts2 = vector<double>(1, INF);
 
     ts1.reserve(m + 1);
-    ts2.reserve(m + 1);
+    ts2.reserve(n + 1);
 
     ts1.insert(ts1.end(), X.begin(), X.end());
     ts2.insert(ts2.end(), Y.begin(), Y.end());
 
-    vector<double> tmpArray = vector<double>(m + 1, INF);
+    vector<double> tmpArray = vector<double>(n + 1, INF);
 
     double tmp = 0;
 
@@ -151,7 +152,7 @@ double MSM_Distance(const vector<double> &X, const vector<double> &Y){
         tmp = INF;
     }
 
-    return tmpArray[m];
+    return tmpArray[n];
 
     /*
     int i,j;

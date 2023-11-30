@@ -384,15 +384,10 @@ int main(  int argc , char *argv[] )
 
     cout << "How many bandwidths:" << endl;
     cin >> bw_size;
-    int bandwidth_perc;
-    double bandwidth;
     int bandwidths[bw_size];
     for (int i = 0; i < bw_size; i++) {
-        cout << "Enter a bandwidth in percent (0-100): ";
-        cin >> bandwidth_perc;
-        bandwidth = ((double)bandwidth_perc/100.0)*queryfile[0].size();
-        bandwidths[i] = bandwidth;
-        cout << bandwidths[i] << " - " << bandwidth_perc << " - " << queryfile[0].size();
+        cout << "Enter a bandwidth (>0): ";
+        cin >> bandwidths[i];
     }
 
 
