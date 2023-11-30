@@ -215,6 +215,7 @@ double msmDistPruned(const vector<double> &X, const vector<double> &Y, double &s
 {
 
     const vector<double>::size_type m = X.size();
+    const vector<double>::size_type n = Y.size();
 
     vector<double> upperBoundArray = calculateMsmGreedyArray(X, Y);
     double upperBound = upperBoundArray[0] + 0.0000001;
@@ -268,10 +269,10 @@ double msmDistPruned(const vector<double> &X, const vector<double> &Y, double &s
         unsigned int end = min(i+local_bandwidth, tmpArray.size());
 
 
-        double start_j = max(start, max((i/slope) , (i-(tmpArray.size()-(1/slope)*tmpArray.size()))*slope));
+        double start_j = max(start, max((i*slope*n/m) , ((1/slope)*(n/m)*i-(1-slope)/slope*n)));
 
 
-        double end_j = min(end,min(slope *i , (i/slope)+(tmpArray.size()-(1/slope)*tmpArray.size())));
+        double end_j = min(end,min((1/slope)*(n/m)*i , (i*slope*n/m)+(1-slope)*n));
         double xi = ts1[i];
         tmp = tmpArray[start_j - 1];
         //first entry is always inf
@@ -382,7 +383,7 @@ int main(  int argc , char *argv[] )
     cin >> slope_size;
     double slopes[slope_size];
     for (int i = 0; i < slope_size; i++) {
-        cout << "Enter a slope (>=1.0): ";
+        cout << "Enter a Itakura (0.0 - 1.0): ";
         cin >> slopes[i];
     }
 
