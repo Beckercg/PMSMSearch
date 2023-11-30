@@ -13,11 +13,10 @@
 #include <cstring>
 
 #define INF 1e20       //Pseudo Infitinte number for this code
-#define C_cost 0.5; // Change this value if needed.
+#define C_COST 0.5 // Change this value if needed.
 
 
 using namespace std;
-
 
 void error(const int &id)
 {
@@ -96,13 +95,23 @@ bool readData(const char &queryToRead,
 
 
 double C(const double &new_point, const double &x,const double &y){
+    /*
     double dist;
     if ( ( (x <= new_point) && (new_point <= y) ) ||
          ( (y <= new_point) && (new_point <= x) ) ){
-        return C_cost;
+        return C_COST;
     }
-    dist = C_cost + min( fabs(new_point - x), fabs(new_point - y) );
+    dist = C_COST + min( fabs(new_point - x), fabs(new_point - y) );
     return dist;
+    */
+    // c - cost of Split/Merge operation. Change this value to what is more
+    // appropriate for your data.
+    if (new_point < min(x, y) || new_point > max(x, y))
+    {
+        return C_COST + min(abs(new_point - x), abs(new_point - y));
+    }
+
+    return C_COST;
 }
 
 double MSM_Distance(const vector<double> &X, const vector<double> &Y){
@@ -124,9 +133,11 @@ double MSM_Distance(const vector<double> &X, const vector<double> &Y){
 
     for (vector<double>::size_type i = 1; i < tmpArray.size(); i++)
     {
+
         double xi = ts1[i];
 
-        for (vector<double>::size_type j = 1; j <= tmpArray.size(); j++)
+        // column index
+        for (vector<double>::size_type j = 1; j < tmpArray.size(); j++)
         {
             double yj = ts2[j];
             double d1, d2, d3;
@@ -136,8 +147,10 @@ double MSM_Distance(const vector<double> &X, const vector<double> &Y){
             tmp = tmpArray[j];
             tmpArray[j] = min(d1, min(d2, d3));
         }
-        tmp =INF;
+
+        tmp = INF;
     }
+
     return tmpArray[m];
 
     /*
