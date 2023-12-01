@@ -251,6 +251,7 @@ double msmDistPruned(const vector<double> &X, const vector<double> &Y, const dou
 
     //  int counterBandwidth =0;
     // row index
+    int last_horizontal_bsf = tmpArray.size();
     for (vector<double>::size_type i = 1; i < tmpArray.size(); i++)
     {
 
@@ -258,7 +259,7 @@ double msmDistPruned(const vector<double> &X, const vector<double> &Y, const dou
         unsigned int bandwidth = computeBandwidth(upperBound);
         unsigned int start = (bandwidth > i) ? sc : max(sc, i - bandwidth);
 
-        unsigned int end = min(i + bandwidth + 1, tmpArray.size());
+        unsigned int end = min(min(i + bandwidth + 1, tmpArray.size()),last_horizontal_bsf);
 
         double xi = ts1[i];
         // the index for the pruned end cannot be lower than the diagonal
@@ -283,7 +284,11 @@ double msmDistPruned(const vector<double> &X, const vector<double> &Y, const dou
             // store old entry before overwriting
             tmp = tmpArray[j];
             tmpArray[j] = min(d1, min(d2, d3));
-            if (tmpArray[j] < bsf) smaller_as_bsf = true;
+            if (tmpArray[j] < bsf) ;
+            if (tmpArray[j] < bsf) {
+                smaller_as_bsf = true;
+                last_horizontal_bsf = j+2;
+            }
             // PruningExperiments strategy
             double lb = getLowerBound(i, j);
             if ((tmpArray[j] + lb) > upperBound)
