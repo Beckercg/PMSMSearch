@@ -11,6 +11,8 @@
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
+#include <algorithm>
+#include <random>
 #include <cstring>
 
 #define INF 1e20       //Pseudo Infitinte number for this code
@@ -74,6 +76,12 @@ bool readFiles(const char *fileToRead,
             }
         }
         data.push_back(auxTS);
+    }
+    for( size_t i = 0 ; i < classValue.size(); ++i )
+    {
+        int num = rand() % classValue.size();
+        swap( data[i], data[num] );
+        swap( classValue[i], classValue[num] );
     }
     return true;
 }
@@ -242,7 +250,7 @@ double msmDistPruned(const vector<double> &X, const vector<double> &Y, const dou
     unsigned int ec = 1;
 
     // remember if an entry smaller than UB was found -> cannot cut
-    bool smallerFound, smaller_as_bsf;
+    bool smallerFound;
     int ecNext;
 
     // initialize first row
@@ -251,7 +259,6 @@ double msmDistPruned(const vector<double> &X, const vector<double> &Y, const dou
 
     //  int counterBandwidth =0;
     // row index
-    int last_horizontal_bsf = tmpArray.size();
     for (vector<double>::size_type i = 1; i < tmpArray.size(); i++)
     {
 
@@ -259,7 +266,7 @@ double msmDistPruned(const vector<double> &X, const vector<double> &Y, const dou
         unsigned int bandwidth = computeBandwidth(upperBound);
         unsigned int start = (bandwidth > i) ? sc : max(sc, i - bandwidth);
 
-        unsigned int end = min(min(i + bandwidth + 1, tmpArray.size()),last_horizontal_bsf);
+        unsigned int end = min(i + bandwidth + 1, tmpArray.size());
 
         double xi = ts1[i];
         // the index for the pruned end cannot be lower than the diagonal
@@ -284,10 +291,8 @@ double msmDistPruned(const vector<double> &X, const vector<double> &Y, const dou
             // store old entry before overwriting
             tmp = tmpArray[j];
             tmpArray[j] = min(d1, min(d2, d3));
-            if (tmpArray[j] < bsf) ;
             if (tmpArray[j] < bsf) {
                 smaller_as_bsf = true;
-                last_horizontal_bsf = j+2;
             }
             // PruningExperiments strategy
             double lb = getLowerBound(i, j);
