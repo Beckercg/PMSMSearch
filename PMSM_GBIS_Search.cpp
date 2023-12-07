@@ -102,13 +102,11 @@ bool readData(const char &queryToRead,
 
 vector<double> calculateMsmGreedyArray(const vector<double> &X, const vector<double> &Y)
 {
-    const std::vector<double>::size_type m = X.size();
+    const vector<double>::size_type m = X.size();
 
-    for (int i = 0; i<=m; i++) cout << i << " x- " << X[i] << endl;
-    for (int i = 0; i<=m; i++) cout << i << " y- " << Y[i] << endl;
     vector<double> greedyArray;
     // greedyArray.reserve(m + 1);
-    greedyArray = std::vector<double>(m + 1, 0);
+    greedyArray = vector<double>(m + 1, 0);
 
     // compute upper Bounds for every diagonal entry
     // the upper bound is computed from right to left: Possibility to update the upper Bound when a diagonal entry is computed
@@ -126,9 +124,8 @@ vector<double> calculateMsmGreedyArray(const vector<double> &X, const vector<dou
 
     greedyArray[m - 1] = distCurrent;
 
-    for (std::vector<double>::size_type i = 2; i <= m; i++)
+    for (vector<double>::size_type i = 2; i <= m; i++)
     {
-
         xCurrent = X[m - i];
         yCurrent = Y[m - i];
         distCurrent = xCurrent - yCurrent;
@@ -211,16 +208,18 @@ double getLowerBound(int xCoord, int yCoord)
  * compute the Msm distance table with pruned entries
  *
  * @return pair: first Double: Distance, second Double: relative amount of pruned cells
+ * msmDistPruned by Jana Holznigenkemper
  */
-double msmDistPruned(const vector<double> &X, const vector<double> &Y)
+double msmDistPruned(const vector<double> &X, const vector<double> &Y, const double &bsf)
 {
-    const std::vector<double>::size_type m = X.size();
+
+    const vector<double>::size_type m = X.size();
 
     vector<double> upperBoundArray = calculateMsmGreedyArray(X, Y);
     double upperBound = upperBoundArray[0] + 0.0000001;
 
-    vector<double> ts1 = std::vector<double>(1, INF);
-    vector<double> ts2 = std::vector<double>(1, INF);
+    vector<double> ts1 = vector<double>(1, INF);
+    vector<double> ts2 = vector<double>(1, INF);
 
     ts1.reserve(m + 1);
     ts2.reserve(m + 1);
@@ -228,10 +227,11 @@ double msmDistPruned(const vector<double> &X, const vector<double> &Y)
     ts1.insert(ts1.end(), X.begin(), X.end());
     ts2.insert(ts2.end(), Y.begin(), Y.end());
 
+
     // Create an array with one extra entry, regarding the whole matrix we initialize
     // MsmDistAStar.Entry [0,0] is set to 0
     // the first row and the first column with inf --> Every entry follows the same computational rules
-    vector<double> tmpArray = std::vector<double>(m + 1, INF);
+    vector<double> tmpArray = vector<double>(m + 1, INF);
 
     // value storing the first "real value" of the array before overwriting it
     //  the first value of the first row has to be 0
@@ -242,7 +242,7 @@ double msmDistPruned(const vector<double> &X, const vector<double> &Y)
     unsigned int ec = 1;
 
     // remember if an entry smaller than UB was found -> cannot cut
-    bool smallerFound;
+    bool smallerFound, smaller_as_bsf;
     int ecNext;
 
     // initialize first row
@@ -251,14 +251,15 @@ double msmDistPruned(const vector<double> &X, const vector<double> &Y)
 
     //  int counterBandwidth =0;
     // row index
-    for (std::vector<double>::size_type i = 1; i < tmpArray.size(); i++)
+    int last_horizontal_bsf = tmpArray.size();
+    for (vector<double>::size_type i = 1; i < tmpArray.size(); i++)
     {
 
         // compute bandwidth regarding the upper bound
         unsigned int bandwidth = computeBandwidth(upperBound);
         unsigned int start = (bandwidth > i) ? sc : max(sc, i - bandwidth);
 
-        unsigned int end = min(i + bandwidth + 1, tmpArray.size());
+        unsigned int end = min(min(i + bandwidth + 1, tmpArray.size()),last_horizontal_bsf);
 
         double xi = ts1[i];
         // the index for the pruned end cannot be lower than the diagonal
@@ -266,15 +267,13 @@ double msmDistPruned(const vector<double> &X, const vector<double> &Y)
         // the upper bound (Euclidean distance = diagonal path)
         ecNext = i;
         smallerFound = false;
-
+        smaller_as_bsf = false;
         // column index
-        for (std::vector<double>::size_type j = start; j < end; j++)
+        for (vector<double>::size_type j = start; j < end; j++)
         {
-            cout << "start " << start << " end " << end << endl;
-            cout << "bandwidth " << bandwidth << " sc " << sc << endl;
-            cout << "upperBound " << upperBound  << " tmpArray[j] " <<  tmpArray[j]<< "upperBoundArray[j] " << upperBoundArray[j]<< endl;
 
             double yj = ts2[j];
+
             double d1, d2, d3;
             d1 = tmp + abs(xi - yj);
             // merge
@@ -285,7 +284,11 @@ double msmDistPruned(const vector<double> &X, const vector<double> &Y)
             // store old entry before overwriting
             tmp = tmpArray[j];
             tmpArray[j] = min(d1, min(d2, d3));
-
+            if (tmpArray[j] < bsf) ;
+            if (tmpArray[j] < bsf) {
+                smaller_as_bsf = true;
+                last_horizontal_bsf = j+2;
+            }
             // PruningExperiments strategy
             double lb = getLowerBound(i, j);
             if ((tmpArray[j] + lb) > upperBound)
@@ -294,7 +297,7 @@ double msmDistPruned(const vector<double> &X, const vector<double> &Y)
                     sc = j + 1;
                 if (j > ec)
                 {
-                    std::fill(tmpArray.begin() + j + 1, tmpArray.end(), INF);
+                    fill(tmpArray.begin() + j + 1, tmpArray.end(), INF);
                     break;
                 }
             }
@@ -306,13 +309,12 @@ double msmDistPruned(const vector<double> &X, const vector<double> &Y)
 
             if (i == j)
             {
-
                 upperBound = tmpArray[j] + upperBoundArray[j] + 0.00001;
             }
         }
-
+        if (!smaller_as_bsf) return INF;
         // tmpArray = this.fillWithInf(1, sc, tmpArray);
-        std::fill(tmpArray.begin() + 1, tmpArray.begin() + sc, INF);
+        fill(tmpArray.begin() + 1, tmpArray.begin() + sc, INF);
 
         // set tmp to infinity since the move computation in the next row is not possible and accesses tmp
         tmp = INF;
@@ -323,7 +325,6 @@ double msmDistPruned(const vector<double> &X, const vector<double> &Y)
 }
 
 
-
 int knn(const vector<double> &query, const vector<vector<double>> &sequencefile,const vector<int> &sclass)
 {
     double bsf = INF;            // best-so-far
@@ -331,8 +332,7 @@ int knn(const vector<double> &query, const vector<vector<double>> &sequencefile,
     int bclass;
 
     for (vector<double>::size_type j = 0; j < sequencefile.size(); j++){
-        distance = msmDistPruned(query, sequencefile[j]);
-        cout << distance << endl;
+        distance = msmDistPruned(query, sequencefile[j], bsf);
         if(distance < bsf)
         {
             bsf = distance;
@@ -365,6 +365,7 @@ int main(  int argc , char *argv[] )
                  qclass,
                  sclass))
         return 0;
+
     tp = 0;
     t1 = clock();
     for (vector<double>::size_type i = 0; i < queryfile.size(); i++){
@@ -379,7 +380,7 @@ int main(  int argc , char *argv[] )
     cout << "Total Execution Time : " << (t2-t1)/CLOCKS_PER_SEC << " sec" << endl;
     FILE *rd = NULL;    //result data
     rd = fopen("results.csv", "a");
-    fprintf(rd,"%s, %s, %d, %d, %f, %f secs\n", "PMSM",dataset.c_str(), queryfile.size(), queryfile[0].size(), acc, (t2-t1)/CLOCKS_PER_SEC);
+    fprintf(rd,"%s, %s, %d, %d, %f, %f secs\n", "PMSM with GLB:",dataset.c_str(), queryfile.size(), queryfile[0].size(), acc, (t2-t1)/CLOCKS_PER_SEC);
 
     return 0;
 }

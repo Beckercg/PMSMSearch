@@ -33,7 +33,6 @@
 #define dist(x,y) ((x-y)*(x-y))
 
 #define INF 1e20       //Pseudo Infitinte number for this code
-#define C_COST 0.5 // cost for merge and split
 
 using namespace std;
 
@@ -123,242 +122,241 @@ int empty(struct deque *d)
     return d->size == 0;
 }
 
-
-//vector<double> calculateMsmGreedyArray(const vector<double> &X, const vector<double> &Y)
-double *calculateMsmGreedyArray(double *X, double *Y, int m)
+/// Finding the envelop of min and max value for LB_Keogh
+/// Implementation idea is intoruduced by Danial Lemire in his paper
+/// "Faster Retrieval with a Two-Pass Dynamic-Time-Warping Lower Bound", Pattern Recognition 42(9), 2009.
+void lower_upper_lemire(double *t, int len, int r, double *l, double *u)
 {
-    //const vector<double>::size_type m = X.size();
-    int i, k;
-    double *greedyArray;
-    greedyArray = (double*)malloc(sizeof(double)*(m+1));
-    for(k=0; k<m+1; k++)    greedyArray[k]=0;
+    struct deque du, dl;
 
-    //vector<double> greedyArray;
-    // greedyArray.reserve(m + 1);
-    //greedyArray = vector<double>(m + 1, 0);
+    init(&du, 2*r+2);
+    init(&dl, 2*r+2);
 
-    // compute upper Bounds for every diagonal entry
-    // the upper bound is computed from right to left: Possibility to update the upper Bound when a diagonal entry is computed
-    // upper Bound for the last entry is 0, because there is nothing left to compute
-    greedyArray[m] = 0.;
+    push_back(&du, 0);
+    push_back(&dl, 0);
 
-    // assume that the time series are aligned at the end
-    double distCurrent = abs(X[m - 1] - Y[m - 1]);
-    double distTmp = distCurrent;
-    double xCurrent;
-    double yCurrent;
-    double xTmp = X[m - 1];
-    double yTmp = Y[m - 1];
-    int rel = (xTmp > yTmp) ? 1 : 2;
-
-    greedyArray[m - 1] = distCurrent;
-
-    //for (vector<double>::size_type i = 2; i <= m; i++)
-    for (i = 2; i <= m; i++)
+    for (int i = 1; i < len; i++)
     {
-        xCurrent = X[m - i];
-        yCurrent = Y[m - i];
-        distCurrent = xCurrent - yCurrent;
-
-        if ((rel == 1) && distCurrent > 0)
+        if (i > r)
         {
-            if (distCurrent > 2 * C_COST && distTmp > 2 * C_COST)
-            {
-                greedyArray[m - i] = 2 * C_COST + abs(xCurrent - xTmp) + abs(yCurrent - yTmp) + greedyArray[m - i + 1];
-            }
-            else
-            {
-                greedyArray[m - i] = distCurrent + greedyArray[m - i + 1];
-            }
+            u[i-r-1] = t[front(&du)];
+            l[i-r-1] = t[front(&dl)];
         }
-        else if ((rel == 1) && distCurrent <= 0)
+        if (t[i] > t[i-1])
         {
-            greedyArray[m - i] = -1 * distCurrent + greedyArray[m - i + 1];
-            rel = 2;
-        }
-        else if ((rel == 2) && distCurrent <= 0)
-        {
-            if (abs(distCurrent) > 2 * C_COST && abs(distTmp) > 2 * C_COST)
-            {
-                greedyArray[m - i] = 2 * C_COST + abs(xCurrent - xTmp) + abs(yCurrent - yTmp) + greedyArray[m - i + 1];
-            }
-            else
-            {
-                greedyArray[m - i] = -1 * distCurrent + greedyArray[m - i + 1];
-            }
+            pop_back(&du);
+            while (!empty(&du) && t[i] > t[back(&du)])
+                pop_back(&du);
         }
         else
         {
-            greedyArray[m - i] = distCurrent + greedyArray[m - i + 1];
-            rel = 1;
+            pop_back(&dl);
+            while (!empty(&dl) && t[i] < t[back(&dl)])
+                pop_back(&dl);
         }
-
-        distTmp = distCurrent;
-        xTmp = xCurrent;
-        yTmp = yCurrent;
+        push_back(&du, i);
+        push_back(&dl, i);
+        if (i == 2 * r + 1 + front(&du))
+            pop_front(&du);
+        else if (i == 2 * r + 1 + front(&dl))
+            pop_front(&dl);
     }
-
-    return greedyArray;
-}
-
-unsigned int computeBandwidth(double upperBound)
-{
-
-    return (unsigned int)ceil(upperBound / C_COST);
-}
-
-/**
- * cost of Split/Merge operation
- *
- * @param new_point point to merge/ split to
- * @param x         xcoord
- * @param y         ycoord
- * @return cost for merge/split
- */
-double C(double new_point, double x, double y)
-{
-
-    // c - cost of Split/Merge operation. Change this value to what is more
-    // appropriate for your data.
-    if (new_point < min(x, y) || new_point > max(x, y))
+    for (int i = len; i < len+r+1; i++)
     {
-        return C_COST + min(abs(new_point - x), abs(new_point - y));
+        u[i-r-1] = t[front(&du)];
+        l[i-r-1] = t[front(&dl)];
+        if (i-front(&du) >= 2 * r + 1)
+            pop_front(&du);
+        if (i-front(&dl) >= 2 * r + 1)
+            pop_front(&dl);
     }
-
-    return C_COST;
+    destroy(&du);
+    destroy(&dl);
 }
 
-double getLowerBound(int xCoord, int yCoord)
+/// Calculate quick lower bound
+/// Usually, LB_Kim take time O(m) for finding top,bottom,fist and last.
+/// However, because of z-normalization the top and bottom cannot give siginifant benefits.
+/// And using the first and last points can be computed in constant time.
+/// The prunning power of LB_Kim is non-trivial, especially when the query is not long, say in length 128.
+double lb_kim_hierarchy(double *t, double *q, int j, int len, double mean, double std, double bsf = INF)
 {
+    /// 1 point at front and back
+    double d, lb;
+    double x0 = (t[j] - mean) / std;
+    double y0 = (t[(len-1+j)] - mean) / std;
+    lb = dist(x0,q[0]) + dist(y0,q[len-1]);
+    if (lb >= bsf)   return lb;
 
-    return abs(xCoord - yCoord) * C_COST;
+    /// 2 points at front
+    double x1 = (t[(j+1)] - mean) / std;
+    d = min(dist(x1,q[0]), dist(x0,q[1]));
+    d = min(d, dist(x1,q[1]));
+    lb += d;
+    if (lb >= bsf)   return lb;
+
+    /// 2 points at back
+    double y1 = (t[(len-2+j)] - mean) / std;
+    d = min(dist(y1,q[len-1]), dist(y0, q[len-2]) );
+    d = min(d, dist(y1,q[len-2]));
+    lb += d;
+    if (lb >= bsf)   return lb;
+
+    /// 3 points at front
+    double x2 = (t[(j+2)] - mean) / std;
+    d = min(dist(x0,q[2]), dist(x1, q[2]));
+    d = min(d, dist(x2,q[2]));
+    d = min(d, dist(x2,q[1]));
+    d = min(d, dist(x2,q[0]));
+    lb += d;
+    if (lb >= bsf)   return lb;
+
+    /// 3 points at back
+    double y2 = (t[(len-3+j)] - mean) / std;
+    d = min(dist(y0,q[len-3]), dist(y1, q[len-3]));
+    d = min(d, dist(y2,q[len-3]));
+    d = min(d, dist(y2,q[len-2]));
+    d = min(d, dist(y2,q[len-1]));
+    lb += d;
+
+    return lb;
 }
 
-/**
- * compute the Msm distance table with pruned entries
- *
- * @return pair: first Double: Distance, second Double: relative amount of pruned cells
- * msmDistPruned by Jana Holznigenkemper
- */
-//double msmDistPruned(const vector<double> &X, const vector<double> &Y)
-double msmDistPruned(double *X, double *Y, int m, double bsf)
+/// LB_Keogh 1: Create Envelop for the query
+/// Note that because the query is known, envelop can be created once at the begenining.
+///
+/// Variable Explanation,
+/// order : sorted indices for the query.
+/// uo, lo: upper and lower envelops for the query, which already sorted.
+/// t     : a circular array keeping the current data.
+/// j     : index of the starting location in t
+/// cb    : (output) current bound at each position. It will be used later for early abandoning in DTW.
+double lb_keogh_cumulative(int* order, double *t, double *uo, double *lo, double *cb, int j, int len, double mean, double std, double best_so_far = INF)
 {
+    double lb = 0;
+    double x, d;
 
-    // const vector<double>::size_type m = X.size();
-
-    //vector<double> upperBoundArray = calculateMsmGreedyArray(X, Y);
-    //double upperBound = upperBoundArray[0] + 0.0000001;
-    double *upperBoundArray = calculateMsmGreedyArray(X, Y, m);
-    double upperBound = upperBoundArray[0] + 0.0000001;
-
-    /*
-    vector<double> ts1 = vector<double>(1, INF);
-    vector<double> ts2 = vector<double>(1, INF);
-
-    ts1.reserve(m + 1);
-    ts2.reserve(m + 1);
-
-    ts1.insert(ts1.end(), X.begin(), X.end());
-    ts2.insert(ts2.end(), Y.begin(), Y.end());
-    */
-
-    // Create an array with one extra entry, regarding the whole matrix we initialize
-    // MsmDistAStar.Entry [0,0] is set to 0
-    // the first row and the first column with inf --> Every entry follows the same computational rules
-
-    double *tmpArray;
-    int i, j, k;
-
-    tmpArray = (double*)malloc(sizeof(double)*(m+1));
-    for(k=0; k<m+1; k++)    tmpArray[k]=INF;
-    //vector<double> tmpArray = vector<double>(m + 1, INF);
-
-    // value storing the first "real value" of the array before overwriting it
-    //  the first value of the first row has to be 0
-    double tmp = 0;
-
-    // index for pruning start and end of row
-    unsigned int sc = 1;
-    unsigned int ec = 1;
-
-    // remember if an entry smaller than UB was found -> cannot cut
-    bool smallerFound;
-    int ecNext;
-
-    // initialize first row
-    //  the first entry of this row is inf, this inf is used for computing the second row
-    //  Arrays.fill(tmpArray, Double.POSITIVE_INFINITY); --> this was done at the initialize step
-
-    //  int counterBandwidth =0;
-    // row index
-    for (int i = 0; i < m+1; i++)
+    for (int i = 0; i < len && lb < best_so_far; i++)
     {
+        x = (t[(order[i]+j)] - mean) / std;
+        d = 0;
+        if (x > uo[i])
+            d = dist(x,uo[i]);
+        else if(x < lo[i])
+            d = dist(x,lo[i]);
+        lb += d;
+        cb[order[i]] = d;
+    }
+    return lb;
+}
 
-        // compute bandwidth regarding the upper bound
-        unsigned int bandwidth = computeBandwidth(upperBound);
-        unsigned int start = (bandwidth > i) ? sc : max(sc, i - bandwidth);
+/// LB_Keogh 2: Create Envelop for the data
+/// Note that the envelops have been created (in main function) when each data point has been read.
+///
+/// Variable Explanation,
+/// tz: Z-normalized data
+/// qo: sorted query
+/// cb: (output) current bound at each position. Used later for early abandoning in DTW.
+/// l,u: lower and upper envelop of the current data
+double lb_keogh_data_cumulative(int* order, double *tz, double *qo, double *cb, double *l, double *u, int len, double mean, double std, double best_so_far = INF)
+{
+    double lb = 0;
+    double uu,ll,d;
 
-        //unsigned int end = min(i + bandwidth + 1, tmpArray.size());
-        unsigned int end = min(i + bandwidth + 1, m+1);
+    for (int i = 0; i < len && lb < best_so_far; i++)
+    {
+        uu = (u[order[i]]-mean)/std;
+        ll = (l[order[i]]-mean)/std;
+        d = 0;
+        if (qo[i] > uu)
+            d = dist(qo[i], uu);
+        else
+        {   if(qo[i] < ll)
+                d = dist(qo[i], ll);
+        }
+        lb += d;
+        cb[order[i]] = d;
+    }
+    return lb;
+}
 
-        double xi = X[i];
-        // the index for the pruned end cannot be lower than the diagonal
-        // All entries on the diagonal have to be equal or smaller than
-        // the upper bound (Euclidean distance = diagonal path)
-        ecNext = i;
-        smallerFound = false;
+/// Calculate Dynamic Time Wrapping distance
+/// A,B: data and query, respectively
+/// cb : cummulative bound used for early abandoning
+/// r  : size of Sakoe-Chiba warpping band
+double dtw(double* A, double* B, double *cb, int m, int r, double bsf = INF)
+{
 
-        // column index
-        for (j = start; j < end; j++)
+    double *cost;
+    double *cost_prev;
+    double *cost_tmp;
+    int i,j,k;
+    double x,y,z,min_cost;
+
+    /// Instead of using matrix of size O(m^2) or O(mr), we will reuse two array of size O(r).
+    cost = (double*)malloc(sizeof(double)*(2*r+1));
+    for(k=0; k<2*r+1; k++)    cost[k]=INF;
+
+    cost_prev = (double*)malloc(sizeof(double)*(2*r+1));
+    for(k=0; k<2*r+1; k++)    cost_prev[k]=INF;
+
+    for (i=0; i<m; i++)
+    {
+        k = max(0,r-i);
+        min_cost = INF;
+
+        for(j=max(0,i-r); j<=min(m-1,i+r); j++, k++)
         {
-
-            double yj = Y[j];
-
-            double d1, d2, d3;
-            d1 = tmp + abs(xi - yj);
-            // merge
-            d2 = tmpArray[j] + C(xi, X[i - 1], yj);
-            // split
-            d3 = tmpArray[j - 1] + C(yj, xi, Y[j - 1]);
-
-            // store old entry before overwriting
-            tmp = tmpArray[j];
-            tmpArray[j] = min(d1, min(d2, d3));
-
-            // PruningExperiments strategy
-            double lb = getLowerBound(i, j);
-            if ((tmpArray[j] + lb) > upperBound)
+            /// Initialize all row and column
+            if ((i==0)&&(j==0))
             {
-                if (!smallerFound)
-                    sc = j + 1;
-                if (j > ec)
-                {
-                    for(k=j+1; k<m+1; k++)    tmpArray[k]=INF;
-                    break;
-                }
-            }
-            else
-            {
-                smallerFound = true;
-                ecNext = j + 1;
+                cost[k]=dist(A[0],B[0]);
+                min_cost = cost[k];
+                continue;
             }
 
-            if (i == j)
-            {
-                upperBound = tmpArray[j] + upperBoundArray[j] + 0.00001;
+            if ((j-1<0)||(k-1<0))     y = INF;
+            else                      y = cost[k-1];
+            if ((i-1<0)||(k+1>2*r))   x = INF;
+            else                      x = cost_prev[k+1];
+            if ((i-1<0)||(j-1<0))     z = INF;
+            else                      z = cost_prev[k];
+
+            /// Classic DTW calculation
+            cost[k] = min( min( x, y) , z) + dist(A[i],B[j]);
+
+            /// Find minimum cost in row for early abandoning (possibly to use column instead of row).
+            if (cost[k] < min_cost)
+            {   min_cost = cost[k];
             }
         }
 
-        // tmpArray = this.fillWithInf(1, sc, tmpArray);
-        for(k=1; k<sc; k++)    tmpArray[k]=INF;
-        //fill(tmpArray.begin() + 1, tmpArray.begin() + sc, INF);
+        /// We can abandon early if the current cummulative distace with lower bound together are larger than bsf
+        if (i+r < m-1 && min_cost + cb[i+r+1] >= bsf)
+        {   free(cost);
+            free(cost_prev);
+            return min_cost + cb[i+r+1];
+        }
 
-        // set tmp to infinity since the move computation in the next row is not possible and accesses tmp
-        tmp = INF;
-        ec = ecNext;
+        /// Move current array to previous array.
+        cost_tmp = cost;
+        cost = cost_prev;
+        cost_prev = cost_tmp;
     }
+    k--;
 
-    return tmpArray[m];
+    /// the DTW distance is in the last cell in the matrix of size O(m^2) or at the middle of our array.
+    double final_dtw = cost_prev[k];
+    free(cost);
+    free(cost_prev);
+    return final_dtw;
+}
+
+/// Print function for debugging
+void printArray(double *x, int len)
+{   for(int i=0; i<len; i++)
+        printf(" %6.2lf",x[i]);
+    printf("\n");
 }
 
 /// If expected error happens, teminated the program.
@@ -516,7 +514,6 @@ int main(  int argc , char *argv[] )
         ex2 += d*d;
         q[i] = d;
         i++;
-        cout << "q d: " << d << endl;
     }
     fclose(qp);
 
@@ -528,7 +525,7 @@ int main(  int argc , char *argv[] )
         q[i] = (q[i] - mean)/std;
 
     /// Create envelop of the query: lower envelop, l, and upper envelop, u
-    //lower_upper_lemire(q, m, r, l, u);
+    lower_upper_lemire(q, m, r, l, u);
 
     /// Sort the query one time by abs(z-norm(q[i]))
     for( i = 0; i<m; i++)
@@ -590,7 +587,7 @@ int main(  int argc , char *argv[] )
         if (ep<=m-1)
         {   done = true;
         } else
-        {
+        {   lower_upper_lemire(buffer, ep, r, l_buff, u_buff);
 
             /// Just for printing a dot for approximate a million point. Not much accurate.
             if (it%(1000000/(EPOCH-m+1))==0)
@@ -624,7 +621,6 @@ int main(  int argc , char *argv[] )
                     j = (i+1)%m;
                     /// the start location of the data in the current chunk
                     I = i-(m-1);
-
                     /*
                     /// Use a constant lower bound to prune the obvious subsequence
                     lb_kim = lb_kim_hierarchy(t, q, j, m, mean, std, bsf);
@@ -638,7 +634,11 @@ int main(  int argc , char *argv[] )
                         {
                             /// Take another linear time to compute z_normalization of t.
                             /// Note that for better optimization, this can merge to the previous function.
-
+                            */
+                            for(k=0;k<m;k++)
+                            {   tz[k] = (t[(k+j)] - mean)/std;
+                            }
+                            /*
                             /// Use another lb_keogh to prune
                             /// qo is the sorted query. tz is unsorted z_normalized data.
                             /// l_buff, u_buff are big envelop for all data in this chunk
@@ -659,7 +659,7 @@ int main(  int argc , char *argv[] )
                                     for(k=m-2; k>=0; k--)
                                         cb[k] = cb[k+1]+cb2[k];
                                 }
-
+                                */
                                 /// Compute DTW and early abandoning if possible
                                 dist = dtw(tz, q, cb, m, r, bsf);
 
@@ -668,27 +668,16 @@ int main(  int argc , char *argv[] )
                                     /// loc is the real starting location of the nearest neighbor in the file
                                     bsf = dist;
                                     loc = (it)*(EPOCH-m+1) + i-m+1;
+                                    cout << bsf << endl;
                                 }
+                                /*
                             } else
                                 keogh2++;
                         } else
                             keogh++;
                     } else
                         kim++;
-                     */
-                    for(k=0;k<m;k++)
-                    {   tz[k] = (t[(k+j)] - mean)/std;
-                    }
-                    /// Compute DTW and early abandoning if possible
-                    //dist = dtw(tz, q, cb, m, r, bsf);
-                    dist = msmDistPruned(tz,buffer,m,bsf);
-                    if( dist < bsf )
-                    {   /// Update bsf
-                        /// loc is the real starting location of the nearest neighbor in the file
-                        cout << bsf << endl;
-                        bsf = dist;
-                        loc = (it)*(EPOCH-m+1) + i-m+1;
-                    }
+                    */
                     /// Reduce obsolute points from sum and sum square
                     ex -= t[j];
                     ex2 -= t[j]*t[j];
@@ -736,6 +725,6 @@ int main(  int argc , char *argv[] )
     printf("Pruned by LB_Kim    : %6.2f%%\n", ((double) kim / i)*100);
     printf("Pruned by LB_Keogh  : %6.2f%%\n", ((double) keogh / i)*100);
     printf("Pruned by LB_Keogh2 : %6.2f%%\n", ((double) keogh2 / i)*100);
-    printf("PMSM Calculation     : %6.2f%%\n", 100-(((double)kim+keogh+keogh2)/i*100));
+    printf("DTW Calculation     : %6.2f%%\n", 100-(((double)kim+keogh+keogh2)/i*100));
     return 0;
 }
