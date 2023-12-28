@@ -685,7 +685,6 @@ int main(  int argc , char *argv[] )
                     if( dist < bsf )
                     {   /// Update bsf
                         /// loc is the real starting location of the nearest neighbor in the file
-                        cout << bsf << endl;
                         bsf = dist;
                         loc = (it)*(EPOCH-m+1) + i-m+1;
                     }

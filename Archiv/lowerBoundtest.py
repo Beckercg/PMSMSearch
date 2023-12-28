@@ -8,7 +8,7 @@ UCRARCHIVE_PATH = ".\\UCRArchive_2018\\"
 def main(queryNumber, sequenceNumber):
     sequence = []
     query = []
-    with open(".\\tests\\unit\\data_testing.tsv") as file:
+    with open("tests/unit/data_testing.tsv") as file:
         tsv_file = csv.reader(file, delimiter="\t")
         for i, line in enumerate(tsv_file):
             for j, value in enumerate(line):

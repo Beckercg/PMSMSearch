@@ -135,8 +135,7 @@ int main(  int argc , char *argv[] )
     double t1,t2;          // timer
 
     string dataset, querypath ,sequencepath;
-    cout << "Which datset: ";
-    cin >> dataset;
+    dataset = argv[1];
     querypath = "data/" + dataset + "/" + dataset + "_TEST.tsv";
     sequencepath = "data/" + dataset + "/" + dataset + "_TRAIN.tsv";
 
@@ -161,7 +160,7 @@ int main(  int argc , char *argv[] )
     cout << "Total Execution Time : " << (t2-t1)/CLOCKS_PER_SEC << " sec" << endl;
     FILE *rd = NULL;    //result data
     rd = fopen("results.csv", "a");
-    fprintf(rd,"%s, %s, %d, %d, %f, %f secs\n", "ED", dataset.c_str(), queryfile.size(), queryfile[1].size(), acc, (t2-t1)/CLOCKS_PER_SEC);
+    fprintf(rd,"%s, %s, %d, %d, %f, %f secs\n", "PMSM",dataset.c_str(), queryfile.size(), queryfile[0].size(), sequencefile.size(), sequencefile[0].size(),acc, (t2-t1)/CLOCKS_PER_SEC);
     fclose(rd);
     return 0;
 }

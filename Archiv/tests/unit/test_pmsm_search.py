@@ -1,5 +1,5 @@
-from pMSMSearch import msm_dist_pruned, msm_dist
-import sys, csv, math
+from Archiv.pMSMSearch import msm_dist_pruned, msm_dist
+import csv, math
 
 
 def run_msm(queryNumber, sequenceNumber):

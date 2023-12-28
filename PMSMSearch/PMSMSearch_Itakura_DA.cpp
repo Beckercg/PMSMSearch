@@ -148,7 +148,7 @@ double getLowerBound(int xCoord, int yCoord)
  * msmDistPruned by Jana Holznigenkemper
  */
 //double msmDistPruned(const vector<double> &X, const vector<double> &Y)
-double msmDistPruned(double *X, double *Y, int m, double bsf)
+double msmDistPruned(double *X, double *Y, int &m, int &n, double &slope, const double &bsf)
 {
 
     vector<double> upperBoundArray = calculateMsmGreedyArray(X, Y, m);
@@ -184,7 +184,7 @@ double msmDistPruned(double *X, double *Y, int m, double bsf)
     unsigned int ec = 1;
 
     // remember if an entry smaller than UB was found -> cannot cut
-    bool smallerFound;
+    bool smallerFound, smaller_as_bsf;
     int ecNext;
 
     // initialize first row
@@ -197,20 +197,25 @@ double msmDistPruned(double *X, double *Y, int m, double bsf)
     {
 
         // compute bandwidth regarding the upper bound
-        unsigned int bandwidth = computeBandwidth(upperBound);
-        unsigned int start = (bandwidth > i) ? sc : max(sc, i - bandwidth);
+        unsigned int local_bandwidth = computeBandwidth(upperBound);
+
+        unsigned int start = (local_bandwidth > i) ? sc : max(sc, i - local_bandwidth);
 
         //unsigned int end = min(i + bandwidth + 1, tmpArray.size());
-        unsigned int end = min(i + bandwidth + 1, m+1);
+        unsigned int end = min(i + local_bandwidth + 1, m+1);
+
+        double start_j = max(start, max((i*slope*n/m) , ((1/slope)*(n/m)*i-(1-slope)/slope*n)));
+        double end_j = min(end,min((1/slope)*(n/m)*i , (i*slope*n/m)+(1-slope)*n));
         double xi = ts1[i];
         // the index for the pruned end cannot be lower than the diagonal
         // All entries on the diagonal have to be equal or smaller than
         // the upper bound (Euclidean distance = diagonal path)
         ecNext = i;
         smallerFound = false;
+        smaller_as_bsf = false;
 
         // column index
-        for (j = start; j < end; j++)
+        for (j = start_j; j < end_j; j++)
         {
 
             double yj = ts2[j];
@@ -223,6 +228,9 @@ double msmDistPruned(double *X, double *Y, int m, double bsf)
             // store old entry before overwriting
             tmp = tmpArray[j];
             tmpArray[j] = min(d1, min(d2, d3));
+            if (tmpArray[j] < bsf) {
+                smaller_as_bsf = true;
+            }
 
             // PruningExperiments strategy
             double lb = getLowerBound(i, j);
@@ -239,26 +247,18 @@ double msmDistPruned(double *X, double *Y, int m, double bsf)
             }
             else
             {
-
                 smallerFound = true;
                 ecNext = j + 1;
             }
 
             if (i == j)
             {
-
-                double tmplog = tmpArray[j];
-                double tmplog2 = upperBoundArray[j];
-
                 upperBound = tmpArray[j] + upperBoundArray[j] + 0.00001;
             }
         }
+        if (!smaller_as_bsf) return INF;
 
-        // tmpArray = this.fillWithInf(1, sc, tmpArray);
         for(k=1; k<sc; k++)    tmpArray[k]=INF;
-        //fill(tmpArray.begin() + 1, tmpArray.begin() + sc, INF);
-
-        // set tmp to infinity since the move computation in the next row is not possible and accesses tmp
         tmp = INF;
         ec = ecNext;
     }
@@ -269,62 +269,57 @@ double msmDistPruned(double *X, double *Y, int m, double bsf)
 }
 
 
-int main()
+int main(  int argc , char *argv[] )
 {
-    FILE *sp;            /// data file pointer
-    FILE *qp;            /// query file pointer
-    vector<vector<double>> queryfile;
-    vector<vector<double>> sequencefile;
-    vector<double> qclass;
-    vector<double> sclass;
-    int nclass, bclass, tp;
-    float acc;
-    double t1,t2,bsf, distance;
-    int m,i,j, query_size, sequence_size;
-    double d;
-
+    FILE *sp;
+    FILE *qp;
+    int m, query_size, sequence_size, i, j, tp=0;
     string dataset, querypath ,sequencepath;
-    cout << "Which datset: ";
-    cin >> dataset;
-    cout << "Datasetlength: ";
-    cin >> m;
-    cout << "How many queries: ";
-    cin >> query_size;
-    cout << "How many sequences: ";
-    cin >> sequence_size;
+    double d,t1,t2,bsf,distance,bclass, acc, slope;
+
+    //read args
+    if (argc<=5)
+        error(4);
+    dataset = argv[1];
     querypath = "data/" + dataset + "/" + dataset + "_TEST.tsv";
     sequencepath = "data/" + dataset + "/" + dataset + "_TRAIN.tsv";
+    m = atol(argv[2]);
+    query_size = atol(argv[3]);
+    sequence_size = atol(argv[4]);
+    slope = atof(argv[5]);
 
-    double** q_file = new double*[query_size+1];
-    if( q_file == NULL )
-        error(1);
-    for(i = 0; i < query_size; i++) {
+    //allocate 2d array
+    double** q_file = new double*[query_size];
+    double** s_file = new double*[sequence_size];
+    double* qclass = new double[query_size];
+    double* sclass = new double[sequence_size];
+
+    for (i = 0; i < query_size; i++) {
+        // Declare a memory block of size m
         q_file[i] = new double[m+1];
     }
-    double** s_file = new double*[sequence_size+1];
-    if( s_file == NULL )
-        error(1);
-    for(i = 0; i < sequence_size; i++) {
+    for (i = 0; i < sequence_size; i++) {
+        // Declare a memory block of size m
         s_file[i] = new double[m+1];
     }
-
 
     qp = fopen(querypath.c_str(),"r");
     i= 0;
     j=-1;
     while(fscanf(qp,"%lf",&d) != EOF && i < (m+1)*query_size)
     {
-
         if(i%(m+1)==0){
             j++;
             i=0;
-            qclass.push_back(d);
+            qclass[j]=d;
         }
         else {
-            q_file[j][i-j-1] = d;
+            q_file[j][i-1] = d;
+
         }
         i++;
     }
+
     fclose(qp);
     sp = fopen(sequencepath.c_str(),"r");
     i=0;
@@ -334,53 +329,46 @@ int main()
         if(i%(m+1)==0){
             j++;
             i=0;
-            sclass.push_back(d);
+            sclass[j]=d;
         }
         else {
-            s_file[j][i-j-1] = d;
+            s_file[j][i-1] = d;
         }
         i++;
     }
-
     fclose(sp);
-
-    tp = 0;
+    tp=0;
     t1 = clock();
     for (int i = 0; i < query_size; i++){
         bsf = INF;
         for (int j = 0; j < sequence_size; j++){
-            distance = msmDistPruned(q_file[i], s_file[j], m, bsf);
-            cout << "distance"<< distance<< endl;
+            distance = msmDistPruned(q_file[i], s_file[j], m, m, slope, bsf);
             //knn
             if(distance < bsf)
             {
                 bsf = distance;
                 bclass = sclass[j];
             }
+
         }
-        if(bclass == qclass[i])   tp++;
+        cout << bclass << endl;
+        if(qclass[i] == bclass)   tp++;
     }
 
+    t2 = clock();
     for(int i = 0; i < query_size; i++) {
         delete[] q_file[i];
     }
-    delete[] q_file;
     for(int i = 0; i < sequence_size; i++) {
         delete[] s_file[i];
     }
+    delete[] q_file;
     delete[] s_file;
-    t2 = clock();
 
-
-
-    acc = tp/query_size;
-    cout << "tp: " << tp << endl;
-    cout << "Accuracy: " << acc << endl;
-    cout << "Total Execution Time : " << (t2-t1)/CLOCKS_PER_SEC << " sec" << endl;
+    acc = (double)tp / (double)query_size;
     FILE *rd = NULL;    //result data
     rd = fopen("results.csv", "a");
-
-    fprintf(rd,"%s, %s, %d, %d, %f, %f secs\n", "PMSM",dataset.c_str(), query_size, m, acc, (t2-t1)/CLOCKS_PER_SEC);
+    fprintf(rd,"%s%s,%s,%f,%f\n", "PMSMSearch_Itakura_DA_", argv[5],dataset.c_str(),acc, (t2-t1)/CLOCKS_PER_SEC);
     fclose(rd);
     return 0;
 }
