@@ -7,4 +7,4 @@ Archiv/*
 modules.xml
 vcs.xml
 results.csv
-.exe
+*.exe

@@ -4,11 +4,16 @@
 
 
 #include <iostream>
+#include <fstream>
+#include <sstream>
 #include <ctime>
 #include <vector>
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
+#include <algorithm>
+#include <random>
+#include <cstring>
 
 #define INF 1e20       //Pseudo Infitinte number for this code
 
@@ -17,6 +22,7 @@ using namespace std;
 
 #define min(x, y) ((x) < (y) ? (x) : (y))
 #define max(x, y) ((x) > (y) ? (x) : (y))
+#define dist(x,y) (abs(x-y))
 
 #define C_COST 0.5 // cost for merge and split
 #define INF 1e20   // pseudo infinite number for this code
@@ -36,9 +42,92 @@ void error(int id)
     exit(1);
 }
 
-
-vector<double> calculateMsmGreedyArray(double *X, double *Y, int m)
+/// Calculate quick lower bound
+/// Die Punkte zwischen zwei Moves die kleiner als C_COST sind haben immer mindestens Kosten von C_COST
+double lb_edcost_hierarchy(vector<double> t, vector<double> q, int len, double bsf = INF)
 {
+    double lb;
+    lb = dist(t[(len-1)],q[len-1]);
+    if (lb >= bsf)   return lb;
+    for(int i = 2; i<len; i++){
+        if(dist(t[(len-i)],q[len-i]) > C_COST) {
+            lb += C_COST;
+        }
+        if (lb >= bsf)   return lb;
+    }
+    return lb;
+}
+
+bool readFiles(const char *fileToRead,
+               vector<vector<double>> &data,
+               vector<int> &classValue,
+               char separator = '\t') // default separator is tab
+{
+    ifstream fin(fileToRead);
+    string line;
+
+    if (!fin.is_open())
+    {
+        return false;
+    }
+
+    while (getline(fin, line))
+    {
+        istringstream lineStream(line);
+        string value;
+        vector<double> auxTS;
+        double auxVal;
+        bool isclassValue = true;
+
+        while (getline(lineStream, value, separator))
+        {
+            istringstream(value) >> auxVal;
+            if (isclassValue)
+            {
+                classValue.push_back(auxVal);
+                isclassValue = false;
+            }
+            else
+            {
+                auxTS.push_back(auxVal);
+            }
+        }
+        data.push_back(auxTS);
+    }
+    for( size_t i = 0 ; i < classValue.size(); ++i )
+    {
+        int num = rand() % classValue.size();
+        swap( data[i], data[num] );
+        swap( classValue[i], classValue[num] );
+    }
+    return true;
+}
+
+
+bool readData(const char &queryToRead,
+              const char &sequenceToRead,
+              vector<vector<double>> &queryfile,
+              vector<vector<double>> &sequencefile,
+              vector<int> &qclass,
+              vector<int> &sclass) {
+    if (!readFiles(&sequenceToRead, sequencefile, sclass))
+    {
+        error(2);
+        return 0;
+    }
+    printf("Sequence data is compose of %d examples with %d observations each\n", sequencefile.size(), sequencefile[0].size());
+    if (!readFiles(&queryToRead, queryfile, qclass))
+    {
+        error(2);
+        return 0;
+    }
+    printf("Query data is compose of %d examples with %d observations each\n\n", queryfile.size(), queryfile[0].size());
+    return 1;
+}
+
+vector<double> calculateMsmGreedyArray(const vector<double> &X, const vector<double> &Y)
+{
+    const vector<double>::size_type m = X.size();
 
     vector<double> greedyArray;
     // greedyArray.reserve(m + 1);
@@ -146,30 +235,28 @@ double getLowerBound(int xCoord, int yCoord)
  * @return pair: first Double: Distance, second Double: relative amount of pruned cells
  * msmDistPruned by Jana Holznigenkemper
  */
-//double msmDistPruned(const vector<double> &X, const vector<double> &Y)
-double msmDistPruned(double *X, double *Y, int m, const double &bsf)
+double msmDistPruned(const vector<double> &X, const vector<double> &Y, const double &bsf)
 {
 
-    vector<double> upperBoundArray = calculateMsmGreedyArray(X, Y, m);
-    double upperBound = upperBoundArray[0] + 0.0000001;
-    double* ts1 = new double[m+2];
-    double* ts2 = new double[m+2];
-    ts1[0] = INF;
-    ts2[0] = INF;
+    const vector<double>::size_type m = X.size();
 
-    for (int i=1; i <=m+1; i++) {
-        ts1[i] = X[i-1]; // Copy elements from X to ts1
-        ts2[i] = Y[i-1]; // Copy elements from X to ts1
-    }
+    vector<double> upperBoundArray = calculateMsmGreedyArray(X, Y);
+    double upperBound = upperBoundArray[0] + 0.0000001;
+
+    vector<double> ts1 = vector<double>(1, INF);
+    vector<double> ts2 = vector<double>(1, INF);
+
+    ts1.reserve(m + 1);
+    ts2.reserve(m + 1);
+
+    ts1.insert(ts1.end(), X.begin(), X.end());
+    ts2.insert(ts2.end(), Y.begin(), Y.end());
+
 
     // Create an array with one extra entry, regarding the whole matrix we initialize
     // MsmDistAStar.Entry [0,0] is set to 0
     // the first row and the first column with inf --> Every entry follows the same computational rules
-
-    int i, j, k;
-    double* tmpArray = new double[m+2];
-    for(k=0; k<m+2; k++)    tmpArray[k]=INF;
-    //vector<double> tmpArray = vector<double>(m + 1, INF);
+    vector<double> tmpArray = vector<double>(m + 1, INF);
 
     // value storing the first "real value" of the array before overwriting it
     //  the first value of the first row has to be 0
@@ -189,15 +276,15 @@ double msmDistPruned(double *X, double *Y, int m, const double &bsf)
 
     //  int counterBandwidth =0;
     // row index
-    for (i = 1; i < m+1; i++)
+    for (vector<double>::size_type i = 1; i < tmpArray.size(); i++)
     {
 
         // compute bandwidth regarding the upper bound
         unsigned int bandwidth = computeBandwidth(upperBound);
         unsigned int start = (bandwidth > i) ? sc : max(sc, i - bandwidth);
 
-        //unsigned int end = min(i + bandwidth + 1, tmpArray.size());
-        unsigned int end = min(i + bandwidth + 1, m+1);
+        unsigned int end = min(i + bandwidth + 1, tmpArray.size());
+
         double xi = ts1[i];
         // the index for the pruned end cannot be lower than the diagonal
         // All entries on the diagonal have to be equal or smaller than
@@ -206,32 +293,34 @@ double msmDistPruned(double *X, double *Y, int m, const double &bsf)
         smallerFound = false;
         smaller_as_bsf = false;
         // column index
-        for (j = start; j < end; j++)
+        for (vector<double>::size_type j = start; j < end; j++)
         {
 
             double yj = ts2[j];
+
             double d1, d2, d3;
             d1 = tmp + abs(xi - yj);
             // merge
             d2 = tmpArray[j] + C(xi, ts1[i - 1], yj);
             // split
             d3 = tmpArray[j - 1] + C(yj, xi, ts2[j - 1]);
+
             // store old entry before overwriting
             tmp = tmpArray[j];
             tmpArray[j] = min(d1, min(d2, d3));
             if (tmpArray[j] < bsf) {
                 smaller_as_bsf = true;
+
             }
             // PruningExperiments strategy
             double lb = getLowerBound(i, j);
-
             if ((tmpArray[j] + lb) > upperBound)
             {
                 if (!smallerFound)
                     sc = j + 1;
                 if (j > ec)
                 {
-                    for(k=j+1; k<m+1; k++)    tmpArray[k]=INF;
+                    fill(tmpArray.begin() + j + 1, tmpArray.end(), INF);
                     break;
                 }
             }
@@ -247,23 +336,25 @@ double msmDistPruned(double *X, double *Y, int m, const double &bsf)
             }
         }
         if (!smaller_as_bsf) return INF;
+        // tmpArray = this.fillWithInf(1, sc, tmpArray);
+        fill(tmpArray.begin() + 1, tmpArray.begin() + sc, INF);
 
-        for(k=1; k<sc; k++)    tmpArray[k]=INF;
         // set tmp to infinity since the move computation in the next row is not possible and accesses tmp
         tmp = INF;
         ec = ecNext;
     }
-    delete[] ts1;
-    delete[] ts2;
+
     return tmpArray[m];
 }
 
 
 int main(  int argc , char *argv[] )
 {
-    FILE *sp;
-    FILE *qp;
-    int m, query_size, sequence_size, i, j, tp=0;
+    vector<vector<double>> queryfile;
+    vector<vector<double>> sequencefile;
+    vector<int> qclass;
+    vector<int> sclass;
+    int nclass, tp, i, j, m, query_size, sequence_size;
     string dataset, querypath ,sequencepath;
     double d,t1,t2,bsf,distance,bclass,acc;
 
@@ -278,61 +369,27 @@ int main(  int argc , char *argv[] )
     sequence_size = atol(argv[4]);
 
 
-    //allocate 2d array
-    double** q_file = new double*[query_size];
-    double** s_file = new double*[sequence_size];
-    double* qclass = new double[query_size];
-    double* sclass = new double[sequence_size];
+    if(!readData(*querypath.c_str(),
+                 *sequencepath.c_str(),
+                 queryfile,
+                 sequencefile,
+                 qclass,
+                 sclass))
+        return 0;
 
-    for (i = 0; i < query_size; i++) {
-        // Declare a memory block of size m
-        q_file[i] = new double[m+1];
-    }
-    for (i = 0; i < sequence_size; i++) {
-        // Declare a memory block of size m
-        s_file[i] = new double[m+1];
-    }
-
-    qp = fopen(querypath.c_str(),"r");
-    i= 0;
-    j=-1;
-    while(fscanf(qp,"%lf",&d) != EOF && i < (m+1)*query_size)
-    {
-        if(i%(m+1)==0){
-            j++;
-            i=0;
-            qclass[j]=d;
-        }
-        else {
-            q_file[j][i-1] = d;
-
-        }
-        i++;
-    }
-
-    fclose(qp);
-    sp = fopen(sequencepath.c_str(),"r");
-    i=0;
-    j=-1;
-    while(fscanf(sp,"%lf",&d) != EOF && i < (m+1)*sequence_size)
-    {
-        if(i%(m+1)==0){
-            j++;
-            i=0;
-            sclass[j]=d;
-        }
-        else {
-            s_file[j][i-1] = d;
-        }
-        i++;
-    }
-    fclose(sp);
-    tp=0;
+    tp = 0;
     t1 = clock();
     for (int i = 0; i < query_size; i++){
         bsf = INF;
         for (int j = 0; j < sequence_size; j++){
-            distance = msmDistPruned(q_file[i], s_file[j], m, bsf);
+            distance = lb_edcost_hierarchy(sequencefile[j], queryfile[i], m, bsf);
+
+            if( distance < bsf){
+
+                distance = msmDistPruned(queryfile[i], sequencefile[j], bsf);
+                cout << distance << ", " << endl;
+            }
+
             //knn
             if(distance < bsf)
             {
@@ -343,21 +400,10 @@ int main(  int argc , char *argv[] )
         if(qclass[i] == bclass)   tp++;
     }
     t2 = clock();
-
-
-    for(int i = 0; i < query_size; i++) {
-        delete[] q_file[i];
-    }
-    for(int i = 0; i < sequence_size; i++) {
-        delete[] s_file[i];
-    }
-    delete[] q_file;
-    delete[] s_file;
-
     acc = (double)tp / (double)query_size;
     FILE *rd = NULL;    //result data
     rd = fopen("results.csv", "a");
-    fprintf(rd,"%s,%s,%f,%f\n", "PMSMSearch_DA",dataset.c_str(),acc, (t2-t1)/CLOCKS_PER_SEC);
+    fprintf(rd,"%s,%s,%f,%f\n", "PMSMSearch_EDCost",dataset.c_str(),acc, (t2-t1)/CLOCKS_PER_SEC);
     fclose(rd);
     return 0;
 }

@@ -3,25 +3,18 @@
 //
 
 
-#include <iostream>
-#include <fstream>
-#include <sstream>
-#include <ctime>
-#include <vector>
-#include <cmath>
-#include <cstdio>
-#include <cstdlib>
-#include <algorithm>
-#include <random>
-#include <cstring>
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdbool.h>
+#include <string.h>
+#include <math.h>
+#include <time.h>
 
 #define INF 1e20       //Pseudo Infitinte number for this code
 
-
-using namespace std;
-
 #define min(x, y) ((x) < (y) ? (x) : (y))
 #define max(x, y) ((x) > (y) ? (x) : (y))
+#define dist(x,y) (fabs(x-y))
 
 #define C_COST 0.5 // cost for merge and split
 #define INF 1e20   // pseudo infinite number for this code
@@ -32,89 +25,23 @@ void error(int id)
 {
     if(id==1)
     {
-        cout << "ERROR: Invalid Number of Arguments!" << endl;
-        cout << "Command Usage:   PMSMSearch.exe  data_file  query_file" << endl;
-        cout << "For example  :   PMSMSearch.exe  data.tsv   query.tsv" << endl;
+        printf("ERROR: Invalid Number of Arguments!");
+        printf("Command Usage:   PMSMSearch.exe  data_file  query_file");
+        printf("For example  :   PMSMSearch.exe  data.tsv   query.tsv");
     }
     else if ( id == 2 )
-        cout << "Error while open file!" << endl;
+        printf("Error while open file!");
     exit(1);
 }
 
-bool readFiles(const char *fileToRead,
-               vector<vector<double>> &data,
-               vector<int> &classValue,
-               char separator = '\t') // default separator is tab
+
+double* calculateMsmGreedyArray(double *X, double *Y, int m)
 {
-    ifstream fin(fileToRead);
-    string line;
 
-    if (!fin.is_open())
-    {
-        return false;
+    double* greedyArray = malloc((m+1) * sizeof(double));
+    for(int i = 0; i < m+1; i++) {
+        greedyArray[i] = 0;
     }
-
-    while (getline(fin, line))
-    {
-        istringstream lineStream(line);
-        string value;
-        vector<double> auxTS;
-        double auxVal;
-        bool isclassValue = true;
-
-        while (getline(lineStream, value, separator))
-        {
-            istringstream(value) >> auxVal;
-            if (isclassValue)
-            {
-                classValue.push_back(auxVal);
-                isclassValue = false;
-            }
-            else
-            {
-                auxTS.push_back(auxVal);
-            }
-        }
-        data.push_back(auxTS);
-    }
-    for( size_t i = 0 ; i < classValue.size(); ++i )
-    {
-        int num = rand() % classValue.size();
-        swap( data[i], data[num] );
-        swap( classValue[i], classValue[num] );
-    }
-    return true;
-}
-
-
-bool readData(const char &queryToRead,
-              const char &sequenceToRead,
-              vector<vector<double>> &queryfile,
-              vector<vector<double>> &sequencefile,
-              vector<int> &qclass,
-              vector<int> &sclass) {
-    if (!readFiles(&sequenceToRead, sequencefile, sclass))
-    {
-        error(2);
-        return 0;
-    }
-    printf("Sequence data is compose of %d examples with %d observations each\n", sequencefile.size(), sequencefile[0].size());
-    if (!readFiles(&queryToRead, queryfile, qclass))
-    {
-        error(2);
-        return 0;
-    }
-    printf("Query data is compose of %d examples with %d observations each\n\n", queryfile.size(), queryfile[0].size());
-    return 1;
-}
-
-vector<double> calculateMsmGreedyArray(const vector<double> &X, const vector<double> &Y)
-{
-    const vector<double>::size_type m = X.size();
-
-    vector<double> greedyArray;
-    // greedyArray.reserve(m + 1);
-    greedyArray = vector<double>(m + 1, 0);
 
     // compute upper Bounds for every diagonal entry
     // the upper bound is computed from right to left: Possibility to update the upper Bound when a diagonal entry is computed
@@ -122,7 +49,7 @@ vector<double> calculateMsmGreedyArray(const vector<double> &X, const vector<dou
     greedyArray[m] = 0.;
 
     // assume that the time series are aligned at the end
-    double distCurrent = abs(X[m - 1] - Y[m - 1]);
+    double distCurrent = fabs(X[m - 1] - Y[m - 1]);
     double distTmp = distCurrent;
     double xCurrent;
     double yCurrent;
@@ -132,7 +59,7 @@ vector<double> calculateMsmGreedyArray(const vector<double> &X, const vector<dou
 
     greedyArray[m - 1] = distCurrent;
 
-    for (vector<double>::size_type i = 2; i <= m; i++)
+    for (int i = 2; i <= m; i++)
     {
         xCurrent = X[m - i];
         yCurrent = Y[m - i];
@@ -142,7 +69,7 @@ vector<double> calculateMsmGreedyArray(const vector<double> &X, const vector<dou
         {
             if (distCurrent > 2 * C_COST && distTmp > 2 * C_COST)
             {
-                greedyArray[m - i] = 2 * C_COST + abs(xCurrent - xTmp) + abs(yCurrent - yTmp) + greedyArray[m - i + 1];
+                greedyArray[m - i] = 2 * C_COST + fabs(xCurrent - xTmp) + fabs(yCurrent - yTmp) + greedyArray[m - i + 1];
             }
             else
             {
@@ -156,9 +83,9 @@ vector<double> calculateMsmGreedyArray(const vector<double> &X, const vector<dou
         }
         else if ((rel == 2) && distCurrent <= 0)
         {
-            if (abs(distCurrent) > 2 * C_COST && abs(distTmp) > 2 * C_COST)
+            if (fabs(distCurrent) > 2 * C_COST && fabs(distTmp) > 2 * C_COST)
             {
-                greedyArray[m - i] = 2 * C_COST + abs(xCurrent - xTmp) + abs(yCurrent - yTmp) + greedyArray[m - i + 1];
+                greedyArray[m - i] = 2 * C_COST + fabs(xCurrent - xTmp) + fabs(yCurrent - yTmp) + greedyArray[m - i + 1];
             }
             else
             {
@@ -200,7 +127,7 @@ double C(double new_point, double x, double y)
     // appropriate for your data.
     if (new_point < min(x, y) || new_point > max(x, y))
     {
-        return C_COST + min(abs(new_point - x), abs(new_point - y));
+        return C_COST + min(fabs(new_point - x), fabs(new_point - y));
     }
 
     return C_COST;
@@ -209,7 +136,7 @@ double C(double new_point, double x, double y)
 double getLowerBound(int xCoord, int yCoord)
 {
 
-    return abs(xCoord - yCoord) * C_COST;
+    return fabs(xCoord - yCoord) * C_COST;
 }
 
 /**
@@ -218,28 +145,31 @@ double getLowerBound(int xCoord, int yCoord)
  * @return pair: first Double: Distance, second Double: relative amount of pruned cells
  * msmDistPruned by Jana Holznigenkemper
  */
-double msmDistPruned(const vector<double> &X, const vector<double> &Y, const double &bsf)
+//double msmDistPruned(const vector<double> &X, const vector<double> &Y)
+double msmDistPruned(double *X, double *Y, int m, double bsf)
 {
 
-    const vector<double>::size_type m = X.size();
+    double* upperBoundArray = calculateMsmGreedyArray(X, Y, m);
 
-    vector<double> upperBoundArray = calculateMsmGreedyArray(X, Y);
+    double* ts1 = malloc((m+2) * sizeof(double));
+    double* ts2 = malloc((m+2) * sizeof(double));
     double upperBound = upperBoundArray[0] + 0.0000001;
+    ts1[0] = INF;
+    ts2[0] = INF;
 
-    vector<double> ts1 = vector<double>(1, INF);
-    vector<double> ts2 = vector<double>(1, INF);
-
-    ts1.reserve(m + 1);
-    ts2.reserve(m + 1);
-
-    ts1.insert(ts1.end(), X.begin(), X.end());
-    ts2.insert(ts2.end(), Y.begin(), Y.end());
-
+    for (int i=1; i <=m+1; i++) {
+        ts1[i] = X[i-1]; // Copy elements from X to ts1
+        ts2[i] = Y[i-1]; // Copy elements from X to ts1
+    }
 
     // Create an array with one extra entry, regarding the whole matrix we initialize
     // MsmDistAStar.Entry [0,0] is set to 0
     // the first row and the first column with inf --> Every entry follows the same computational rules
-    vector<double> tmpArray = vector<double>(m + 1, INF);
+
+    int i, j, k;
+    double* tmpArray = malloc((m+2) * sizeof(double));
+    for(k=0; k<m+2; k++)    tmpArray[k]=INF;
+    //vector<double> tmpArray = vector<double>(m + 1, INF);
 
     // value storing the first "real value" of the array before overwriting it
     //  the first value of the first row has to be 0
@@ -259,15 +189,15 @@ double msmDistPruned(const vector<double> &X, const vector<double> &Y, const dou
 
     //  int counterBandwidth =0;
     // row index
-    for (vector<double>::size_type i = 1; i < tmpArray.size(); i++)
+    for (i = 1; i < m+1; i++)
     {
 
         // compute bandwidth regarding the upper bound
         unsigned int bandwidth = computeBandwidth(upperBound);
         unsigned int start = (bandwidth > i) ? sc : max(sc, i - bandwidth);
 
-        unsigned int end = min(i + bandwidth + 1, tmpArray.size());
-
+        //unsigned int end = min(i + bandwidth + 1, tmpArray.size());
+        unsigned int end = min(i + bandwidth + 1, m+1);
         double xi = ts1[i];
         // the index for the pruned end cannot be lower than the diagonal
         // All entries on the diagonal have to be equal or smaller than
@@ -276,34 +206,34 @@ double msmDistPruned(const vector<double> &X, const vector<double> &Y, const dou
         smallerFound = false;
         smaller_as_bsf = false;
         // column index
-        for (vector<double>::size_type j = start; j < end; j++)
+        for (j = start; j < end; j++)
         {
 
             double yj = ts2[j];
-
             double d1, d2, d3;
-            d1 = tmp + abs(xi - yj);
+            d1 = tmp + fabs(xi - yj);
             // merge
             d2 = tmpArray[j] + C(xi, ts1[i - 1], yj);
             // split
             d3 = tmpArray[j - 1] + C(yj, xi, ts2[j - 1]);
-
             // store old entry before overwriting
             tmp = tmpArray[j];
+
             tmpArray[j] = min(d1, min(d2, d3));
+
             if (tmpArray[j] < bsf) {
                 smaller_as_bsf = true;
-
             }
             // PruningExperiments strategy
             double lb = getLowerBound(i, j);
+
             if ((tmpArray[j] + lb) > upperBound)
             {
                 if (!smallerFound)
                     sc = j + 1;
                 if (j > ec)
                 {
-                    fill(tmpArray.begin() + j + 1, tmpArray.end(), INF);
+                    for(k=j+1; k<m+1; k++)    tmpArray[k]=INF;
                     break;
                 }
             }
@@ -319,54 +249,106 @@ double msmDistPruned(const vector<double> &X, const vector<double> &Y, const dou
             }
         }
         if (!smaller_as_bsf) return INF;
-        // tmpArray = this.fillWithInf(1, sc, tmpArray);
-        fill(tmpArray.begin() + 1, tmpArray.begin() + sc, INF);
 
+        for(k=1; k<sc; k++)    tmpArray[k]=INF;
         // set tmp to infinity since the move computation in the next row is not possible and accesses tmp
         tmp = INF;
         ec = ecNext;
     }
+    free(upperBoundArray);
+    free(ts1);
+    free(ts2);
 
-    return tmpArray[m];
+    double result = tmpArray[m];
+    free(tmpArray);
+    return result;
 }
 
 
 int main(  int argc , char *argv[] )
 {
-    vector<vector<double>> queryfile;
-    vector<vector<double>> sequencefile;
-    vector<int> qclass;
-    vector<int> sclass;
-    int nclass, tp, i, j, m, query_size, sequence_size;
-    string dataset, querypath ,sequencepath;
-    double d,t1,t2,bsf,distance,bclass,acc;
+    FILE *sp;
+    FILE *qp;
+    int m, query_size, sequence_size, i, j, tp = 0;
+    char dataset[50];
+    char querypath[200];
+    char sequencepath[200];
+    double d, t1, t2, bsf, distance, bclass, acc;
 
     //read args
     if (argc<=4)
         error(4);
-    dataset = argv[1];
-    querypath = "data/" + dataset + "/" + dataset + "_TEST.tsv";
-    sequencepath = "data/" + dataset + "/" + dataset + "_TRAIN.tsv";
+    // Copy dataset name from argv[1]
+    strncpy(dataset, argv[1], 99);
+    dataset[99] = '\0'; // Ensuring null-termination
+
+    // Construct querypath
+    snprintf(querypath, sizeof(querypath), "data/%s/%s_TEST.tsv", dataset, dataset);
+
+    // Construct sequencepath
+    snprintf(sequencepath, sizeof(sequencepath), "data/%s/%s_TRAIN.tsv", dataset, dataset);
+
     m = atol(argv[2]);
     query_size = atol(argv[3]);
     sequence_size = atol(argv[4]);
 
+    double** q_file = (double**)malloc(query_size * sizeof(double*));
+    double** s_file = (double**)malloc(sequence_size * sizeof(double*));
+    double* qclass = (double*)malloc(query_size * sizeof(double));
+    double* sclass = (double*)malloc(sequence_size * sizeof(double));
 
-    if(!readData(*querypath.c_str(),
-                 *sequencepath.c_str(),
-                 queryfile,
-                 sequencefile,
-                 qclass,
-                 sclass))
-        return 0;
+    for (i = 0; i < query_size; i++) {
+        // Allocate a memory block of size m+1 for each row
+        q_file[i] = (double*)malloc((m+1) * sizeof(double));
+    }
+    for (i = 0; i < sequence_size; i++) {
+        // Allocate a memory block of size m+1 for each row
+        s_file[i] = (double*)malloc((m+1) * sizeof(double));
+    }
 
-    tp = 0;
+    qp = fopen(querypath,"r");
+    i= 0;
+    j=-1;
+    while(fscanf(qp,"%lf",&d) != EOF && i < (m+1)*query_size)
+    {
+        if(i%(m+1)==0){
+            j++;
+            i=0;
+            qclass[j]=d;
+        }
+        else {
+            q_file[j][i-1] = d;
+
+        }
+        i++;
+    }
+
+    fclose(qp);
+    sp = fopen(sequencepath,"r");
+    i=0;
+    j=-1;
+    while(fscanf(sp,"%lf",&d) != EOF && i < (m+1)*sequence_size)
+    {
+        if(i%(m+1)==0){
+            j++;
+            i=0;
+            sclass[j]=d;
+        }
+        else {
+            s_file[j][i-1] = d;
+        }
+        i++;
+    }
+    fclose(sp);
+
+    tp=0;
     t1 = clock();
     for (int i = 0; i < query_size; i++){
         bsf = INF;
         for (int j = 0; j < sequence_size; j++){
-            distance = msmDistPruned(queryfile[i], sequencefile[j], bsf);
-            //knn
+
+            distance = msmDistPruned(q_file[i], s_file[j], m, bsf);
+
             if(distance < bsf)
             {
                 bsf = distance;
@@ -376,11 +358,24 @@ int main(  int argc , char *argv[] )
         if(qclass[i] == bclass)   tp++;
     }
     t2 = clock();
-    cout << tp << endl;
+
+
+    for(i = 0; i < query_size; i++) {
+        free(q_file[i]);
+    }
+
+    for(i = 0; i < sequence_size; i++) {
+        free(s_file[i]);
+    }
+    free(q_file);
+    free(s_file);
+    free(qclass);
+    free(sclass);
+
     acc = (double)tp / (double)query_size;
     FILE *rd = NULL;    //result data
     rd = fopen("results.csv", "a");
-    fprintf(rd,"%s,%s,%f,%f\n", "PMSMSearch",dataset.c_str(),acc, (t2-t1)/CLOCKS_PER_SEC);
+    fprintf(rd,"%s,%s,%f,%f\n", "PMSMSearch_DA",dataset,acc, (t2-t1)/CLOCKS_PER_SEC);
     fclose(rd);
     return 0;
 }
