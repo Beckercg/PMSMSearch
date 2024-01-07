@@ -124,15 +124,17 @@ int empty(struct deque *d)
 
 /// Calculate quick lower bound
 /// Die Punkte zwischen zwei Moves die kleiner als C_COST sind haben immer mindestens Kosten von C_COST
-double lb_edcost_hierarchy(double *t, double *q, int j, int len, double bsf)
+double lb_edcostl_hierarchy(double *t, double *q, int j, int len, double bsf)
 {
     double lb;
     lb = dist(t[(len-1+j)],q[len-1]);
     if (lb >= bsf)   return lb;
     for(int l = 2; l<len; l++){
 
-        if(dist(t[(len-l)],q[len-l]) > C_COST) {
+        if(dist(t[(len-l)],q[len-l]) >= C_COST) {
             lb += C_COST;
+        }else{
+            lb += dist(t[(len-l)],q[len-l]);
         }
         if (lb >= bsf)   return lb;
     }
@@ -340,11 +342,9 @@ double msmDistPruned(double *X, double *Y, int m, double bsf)
             // store old entry before overwriting
             tmp = tmpArray[j];
             tmpArray[j] = min(d1, min(d2, d3));
-            /*
             if (tmpArray[j] < bsf) {
                 smaller_as_bsf = true;
             }
-*/
             // PruningExperiments strategy
             double lb = getLowerBound(i, j);
             if ((tmpArray[j] + lb) > upperBound)
@@ -369,7 +369,7 @@ double msmDistPruned(double *X, double *Y, int m, double bsf)
             }
         }
 
-        //if (!smaller_as_bsf) return INF;
+        if(!smaller_as_bsf) return INF;
         // tmpArray = this.fillWithInf(1, sc, tmpArray);
         for(k=1; k<sc; k++)    tmpArray[k]=INF;
         //fill(tmpArray.begin() + 1, tmpArray.begin() + sc, INF);
@@ -547,9 +547,6 @@ int main(  int argc , char *argv[] )
     for( i = 0 ; i < m ; i++ )
         q[i] = (q[i] - mean)/std;
 
-    /// Create envelop of the query: lower envelop, l, and upper envelop, u
-    //lower_upper_lemire(q, m, r, l, u);
-
     /// Sort the query one time by abs(z-norm(q[i]))
     for( i = 0; i<m; i++)
     {
@@ -650,71 +647,15 @@ int main(  int argc , char *argv[] )
                         tz[k] = (t[(k+j)] - mean)/std;
                     }
                     /// Use a constant lower bound to prune the obvious subsequence
-                    lb_edcost = lb_edcost_hierarchy(tz, q, j, m, bsf);
-
+                    lb_edcost = lb_edcostl_hierarchy(tz, q, j, m, bsf);
                     if (lb_edcost < bsf)
                     {
-                        /*
-                            /// Use a linear time lower bound to prune; z_normalization of t will be computed on the fly.
-                            /// uo, lo are envelop of the query.
-                            lb_k = lb_keogh_cumulative(order, t, uo, lo, cb1, j, m, mean, std, bsf);
-                            if (lb_k < bsf)
-                            {
-                                /// Take another linear time to compute z_normalization of t.
-                                /// Note that for better optimization, this can merge to the previous function.
-
-                                /// Use another lb_keogh to prune
-                                /// qo is the sorted query. tz is unsorted z_normalized data.
-                                /// l_buff, u_buff are big envelop for all data in this chunk
-                                lb_k2 = lb_keogh_data_cumulative(order, tz, qo, cb2, l_buff+I, u_buff+I, m, mean, std, bsf);
-                                if (lb_k2 < bsf)
-                                {
-                                    /// Choose better lower bound between lb_keogh and lb_keogh2 to be used in early abandoning DTW
-                                    /// Note that cb and cb2 will be cumulative summed here.
-                                    if (lb_k > lb_k2)
-                                    {
-                                        cb[m-1]=cb1[m-1];
-                                        for(k=m-2; k>=0; k--)
-                                            cb[k] = cb[k+1]+cb1[k];
-                                    }
-                                    else
-                                    {
-                                        cb[m-1]=cb2[m-1];
-                                        for(k=m-2; k>=0; k--)
-                                            cb[k] = cb[k+1]+cb2[k];
-                                    }
-
-                                    */
-
-                        /// Compute MSM and early abandoning if possible
-                        //dist = dtw(tz, q, cb, m, r, bsf);
-
                         distCalc = msmDistPruned(tz,q,m,bsf);
-
                         if( distCalc < bsf )
-
                         {   /// Update bsf
-
                             bsf = distCalc;
                             loc = (it)*(EPOCH-m+1) + i-m+1;
-
                         }
-                        /*
-
-                        /// Compute DTW and early abandoning if possible
-                        dist = dtw(tz, q, cb, m, r, bsf);
-
-                        if( dist < bsf )
-                        {   /// Update bsf
-                            /// loc is the real starting location of the nearest neighbor in the file
-                            bsf = dist;
-                            loc = (it)*(EPOCH-m+1) + i-m+1;
-                        }
-                    } else
-                        keogh2++;
-                } else
-                    keogh++;
-             */
                     } else
                         edcost++;
 
@@ -752,19 +693,13 @@ int main(  int argc , char *argv[] )
     free(u_buff);
 
     t2 = clock();
-    printf("\n");
 
-    /// printf is just easier for formating ;)
     printf("\n");
-    printf("Pruned by LB_EDCost    : %6.2f%%\n", ((double) edcost / i)*100);
-    //printf("Pruned by LB_Keogh  : %6.2f%%\n", ((double) keogh / i)*100);
-    //printf("Pruned by LB_Keogh2 : %6.2f%%\n", ((double) keogh2 / i)*100);
+    printf("Pruned by LB_EDCostH    : %6.2f%%\n", ((double) edcost / i)*100);
     printf("PMSM Calculation     : %6.2f%%\n", 100-(((double)edcost+keogh+keogh2)/i*100));
-
-
     FILE *rd = NULL;    //result data
     rd = fopen("subsequence_results.csv", "a");
-    fprintf(rd,"%s,%d,%f,%lld,%d,%f\n", "PMSMSearch with LB_EDCost", m,bsf,loc,edcost, (t2-t1)/CLOCKS_PER_SEC);
+    fprintf(rd,"%s,%i,%lli,%f,%lld,%d,%f\n", "PMSMSearch with LB_EDCostH", m,i,bsf,loc,edcost, (t2-t1)/CLOCKS_PER_SEC);
     fclose(rd);
 
     return 0;
