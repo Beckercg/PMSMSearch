@@ -124,13 +124,12 @@ int empty(struct deque *d)
 
 /// Calculate quick lower bound
 /// Die Punkte zwischen zwei Moves die kleiner als C_COST sind haben immer mindestens Kosten von C_COST
-double lb_edcosth_hierarchy(double *t, double *q, int j, int len, double bsf)
+double lb_edcost_h(double *t, double *q, int len, double bsf)
 {
     double lb;
-    lb = dist(t[(len-1+j)],q[len-1]);
+    lb = dist(t[(len-1)],q[len-1]);
     if (lb >= bsf)   return lb;
     for(int l = 2; l<len; l++){
-
         if(dist(t[(len-l)],q[len-l]) >= C_COST) {
             lb += C_COST;
         }else{
@@ -644,7 +643,7 @@ int main(  int argc , char *argv[] )
                         tz[k] = (t[(k+j)] - mean)/std;
                     }
                     /// Use a constant lower bound to prune the obvious subsequence
-                    lb_edcost = lb_edcosth_hierarchy(tz, q, j, m, bsf);
+                    lb_edcost = lb_edcost_h(tz, q, m, bsf);
                     if (lb_edcost < bsf)
                     {
 

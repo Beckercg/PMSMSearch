@@ -34,21 +34,6 @@ void error(int id)
     exit(1);
 }
 
-/// Calculate quick lower bound
-/// Die Punkte zwischen zwei Moves die kleiner als C_COST sind haben immer mindestens Kosten von C_COST
-double lb_edcost_hierarchy(double *t, double *q, int len, double bsf)
-{
-    double lb;
-    lb = dist(t[(len-1)],q[len-1]);
-    if (lb >= bsf)   return lb;
-    for(int i = 2; i<len; i++){
-        if(dist(t[(len-i)],q[len-i]) > C_COST) {
-            lb += C_COST;
-        }
-        if (lb >= bsf)   return lb;
-    }
-    return lb;
-}
 
 double* calculateMsmGreedyArray(double *X, double *Y, int m)
 {
@@ -195,7 +180,7 @@ double msmDistPruned(double *X, double *Y, int m, double bsf)
     unsigned int ec = 1;
 
     // remember if an entry smaller than UB was found -> cannot cut
-    bool smallerFound, smaller_as_bsf;
+    bool smallerFound;
     int ecNext;
 
     // initialize first row
@@ -219,7 +204,6 @@ double msmDistPruned(double *X, double *Y, int m, double bsf)
         // the upper bound (Euclidean distance = diagonal path)
         ecNext = i;
         smallerFound = false;
-        smaller_as_bsf = false;
         // column index
         for (j = start; j < end; j++)
         {
@@ -236,9 +220,6 @@ double msmDistPruned(double *X, double *Y, int m, double bsf)
 
             tmpArray[j] = min(d1, min(d2, d3));
 
-            if (tmpArray[j] < bsf) {
-                smaller_as_bsf = true;
-            }
             // PruningExperiments strategy
             double lb = getLowerBound(i, j);
 
@@ -263,7 +244,6 @@ double msmDistPruned(double *X, double *Y, int m, double bsf)
                 upperBound = tmpArray[j] + upperBoundArray[j] + 0.00001;
             }
         }
-        if (!smaller_as_bsf) return INF;
 
         for(k=1; k<sc; k++)    tmpArray[k]=INF;
         // set tmp to infinity since the move computation in the next row is not possible and accesses tmp
@@ -362,11 +342,7 @@ int main(  int argc , char *argv[] )
         bsf = INF;
         for (int j = 0; j < sequence_size; j++){
 
-            distance = lb_edcost_hierarchy(s_file[j], q_file[i], m, bsf);
-
-            if( distance < bsf){
-                distance = msmDistPruned(q_file[i], s_file[j], m, bsf);
-            }
+            distance = msmDistPruned(q_file[i], s_file[j], m, bsf);
 
             if(distance < bsf)
             {
@@ -394,7 +370,7 @@ int main(  int argc , char *argv[] )
     acc = (double)tp / (double)query_size;
     FILE *rd = NULL;    //result data
     rd = fopen("results.csv", "a");
-    fprintf(rd,"%s,%s,%f,%f\n", "PMSMSearch_EDCost_DA",dataset,acc, (t2-t1)/CLOCKS_PER_SEC);
+    fprintf(rd,"%s,%s,%f,%f\n", "PMSMSearch_DA",dataset,acc, (t2-t1)/CLOCKS_PER_SEC);
     fclose(rd);
     return 0;
 }

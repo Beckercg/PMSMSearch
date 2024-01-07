@@ -342,11 +342,9 @@ double msmDistPruned(double *X, double *Y, int m, double bsf)
             // store old entry before overwriting
             tmp = tmpArray[j];
             tmpArray[j] = min(d1, min(d2, d3));
-            /*
             if (tmpArray[j] < bsf) {
                 smaller_as_bsf = true;
             }
-*/
             // PruningExperiments strategy
             double lb = getLowerBound(i, j);
             if ((tmpArray[j] + lb) > upperBound)
@@ -371,7 +369,7 @@ double msmDistPruned(double *X, double *Y, int m, double bsf)
             }
         }
 
-        //if (!smaller_as_bsf) return INF;
+        if (!smaller_as_bsf) return INF;
         // tmpArray = this.fillWithInf(1, sc, tmpArray);
         for(k=1; k<sc; k++)    tmpArray[k]=INF;
         //fill(tmpArray.begin() + 1, tmpArray.begin() + sc, INF);
@@ -651,74 +649,16 @@ int main(  int argc , char *argv[] )
                     {
                         tz[k] = (t[(k+j)] - mean)/std;
                     }
-                    /// Use a constant lower bound to prune the obvious subsequence
-                    //lb_edcost = lb_edcost_hierarchy(tz, q, j, m, bsf);
+                    distCalc = msmDistPruned(tz,q,m,bsf);
 
-                    //if (lb_edcost < bsf)
-                    //{
-                        /*
-                            /// Use a linear time lower bound to prune; z_normalization of t will be computed on the fly.
-                            /// uo, lo are envelop of the query.
-                            lb_k = lb_keogh_cumulative(order, t, uo, lo, cb1, j, m, mean, std, bsf);
-                            if (lb_k < bsf)
-                            {
-                                /// Take another linear time to compute z_normalization of t.
-                                /// Note that for better optimization, this can merge to the previous function.
+                    if( distCalc < bsf )
 
-                                /// Use another lb_keogh to prune
-                                /// qo is the sorted query. tz is unsorted z_normalized data.
-                                /// l_buff, u_buff are big envelop for all data in this chunk
-                                lb_k2 = lb_keogh_data_cumulative(order, tz, qo, cb2, l_buff+I, u_buff+I, m, mean, std, bsf);
-                                if (lb_k2 < bsf)
-                                {
-                                    /// Choose better lower bound between lb_keogh and lb_keogh2 to be used in early abandoning DTW
-                                    /// Note that cb and cb2 will be cumulative summed here.
-                                    if (lb_k > lb_k2)
-                                    {
-                                        cb[m-1]=cb1[m-1];
-                                        for(k=m-2; k>=0; k--)
-                                            cb[k] = cb[k+1]+cb1[k];
-                                    }
-                                    else
-                                    {
-                                        cb[m-1]=cb2[m-1];
-                                        for(k=m-2; k>=0; k--)
-                                            cb[k] = cb[k+1]+cb2[k];
-                                    }
+                    {   /// Update bsf
 
-                                    */
+                        bsf = distCalc;
+                        loc = (it)*(EPOCH-m+1) + i-m+1;
 
-                        /// Compute MSM and early abandoning if possible
-                        //dist = dtw(tz, q, cb, m, r, bsf);
-
-                        distCalc = msmDistPruned(tz,q,m,bsf);
-
-                        if( distCalc < bsf )
-
-                        {   /// Update bsf
-
-                            bsf = distCalc;
-                            loc = (it)*(EPOCH-m+1) + i-m+1;
-
-                        }
-                        /*
-
-                        /// Compute DTW and early abandoning if possible
-                        dist = dtw(tz, q, cb, m, r, bsf);
-
-                        if( dist < bsf )
-                        {   /// Update bsf
-                            /// loc is the real starting location of the nearest neighbor in the file
-                            bsf = dist;
-                            loc = (it)*(EPOCH-m+1) + i-m+1;
-                        }
-                    } else
-                        keogh2++;
-                } else
-                    keogh++;
-             */
-                    //} else
-                        //edcost++;
+                    }
 
                     /// Reduce obsolute points from sum and sum square
                     ex -= t[j];
@@ -766,7 +706,7 @@ int main(  int argc , char *argv[] )
 
     FILE *rd = NULL;    //result data
     rd = fopen("subsequence_results.csv", "a");
-    fprintf(rd,"%s,%d,%f,%lld,%d,%f\n", "PMSMSearch", m,bsf,loc,edcost, (t2-t1)/CLOCKS_PER_SEC);
+    fprintf(rd,"%s,%i,%lli,%f,%lld,%f\n", "PMSMSearch", m,i,bsf,loc, (t2-t1)/CLOCKS_PER_SEC);
     fclose(rd);
 
     return 0;

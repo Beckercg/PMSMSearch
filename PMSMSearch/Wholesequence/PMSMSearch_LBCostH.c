@@ -34,6 +34,19 @@ void error(int id)
     exit(1);
 }
 
+double lb_cost_h(double *t, double *q, int len, double bsf)
+{
+    double lb;
+    lb = dist(t[(len-1)],q[len-1]);
+    if (lb >= bsf)   return lb;
+    for(int l = 2; l<len; l++){
+        if(dist(t[(len-l)],q[len-l]) >= C_COST) {
+            lb += C_COST;
+        }
+        if (lb >= bsf)   return lb;
+    }
+    return lb;
+}
 
 double* calculateMsmGreedyArray(double *X, double *Y, int m)
 {
@@ -135,7 +148,6 @@ double C(double new_point, double x, double y)
 
 double getLowerBound(int xCoord, int yCoord)
 {
-
     return fabs(xCoord - yCoord) * C_COST;
 }
 
@@ -145,7 +157,6 @@ double getLowerBound(int xCoord, int yCoord)
  * @return pair: first Double: Distance, second Double: relative amount of pruned cells
  * msmDistPruned by Jana Holznigenkemper
  */
-//double msmDistPruned(const vector<double> &X, const vector<double> &Y)
 double msmDistPruned(double *X, double *Y, int m, double bsf)
 {
 
@@ -169,7 +180,6 @@ double msmDistPruned(double *X, double *Y, int m, double bsf)
     int i, j, k;
     double* tmpArray = malloc((m+2) * sizeof(double));
     for(k=0; k<m+2; k++)    tmpArray[k]=INF;
-    //vector<double> tmpArray = vector<double>(m + 1, INF);
 
     // value storing the first "real value" of the array before overwriting it
     //  the first value of the first row has to be 0
@@ -273,7 +283,7 @@ int main(  int argc , char *argv[] )
     char dataset[50];
     char querypath[200];
     char sequencepath[200];
-    double d, t1, t2, bsf, distance, bclass, acc;
+    double d, t1, t2, bsf, distance, bclass, acc, lb_edcost;
 
     //read args
     if (argc<=4)
@@ -347,13 +357,16 @@ int main(  int argc , char *argv[] )
         bsf = INF;
         for (int j = 0; j < sequence_size; j++){
 
+            lb_edcost = lb_cost_h(q_file[i], s_file[j], m, bsf);
+            if(lb_edcost < bsf){
+                if(distance < bsf)
+                {
+                    bsf = distance;
+                    bclass = sclass[j];
+                }
+            }
             distance = msmDistPruned(q_file[i], s_file[j], m, bsf);
 
-            if(distance < bsf)
-            {
-                bsf = distance;
-                bclass = sclass[j];
-            }
         }
         if(qclass[i] == bclass)   tp++;
     }
@@ -375,7 +388,7 @@ int main(  int argc , char *argv[] )
     acc = (double)tp / (double)query_size;
     FILE *rd = NULL;    //result data
     rd = fopen("results.csv", "a");
-    fprintf(rd,"%s,%s,%f,%f\n", "PMSMSearch_DA",dataset,acc, (t2-t1)/CLOCKS_PER_SEC);
+    fprintf(rd,"%s,%s,%f,%f\n", "PMSMSearch with LB_CostH",dataset,acc, (t2-t1)/CLOCKS_PER_SEC);
     fclose(rd);
     return 0;
 }
