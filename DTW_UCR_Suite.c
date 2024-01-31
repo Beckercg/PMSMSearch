@@ -717,8 +717,8 @@ int main(  int argc , char *argv[] )
     /// printf is just easier for formating ;)
     printf("\n");
     printf("Time: %f", (t2-t1)/CLOCKS_PER_SEC);
-    printf("Loc: %f", sqrt(bsf));
-    printf("Distance: %lld", loc);
+    printf("Loc: %f", loc);
+    printf("Distance: %lld", sqrt(bsf));
     printf("Data Scanned: %lld", i);
     printf("Pruned by LB_Kim    : %6.2f%%\n", ((double) kim / i)*100);
     printf("Pruned by LB_Keogh  : %6.2f%%\n", ((double) keogh / i)*100);

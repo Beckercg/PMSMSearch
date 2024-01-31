@@ -34,6 +34,189 @@ void error(int id)
     exit(1);
 }
 
+/*
+/// Calculate quick lower bound
+/// Die Punkte zwischen zwei Moves die kleiner als C_COST sind haben immer mindestens Kosten von C_COST
+double lb_sakoe_tree(double *t, double *q, int len, double bsf)
+{
+    double lb,d,e, f,g,h,i,x,y,z;
+    double tmpt = t[(len-1)];
+    double tmpq = q[(len-1)];
+    int skip;
+    lb = dist(tmpt,tmpq);
+    if (lb >= bsf)   return lb;
+    for(int ij = 8; ij<len-8; ij++){
+        x = min(dist(t[(len-ij+7)],q[len-ij]),dist(t[(len-ij+6)],q[len-ij]));
+        x = min(x,dist(t[(len-ij+5)],q[len-ij]));
+        x = min(x,dist(t[(len-ij+4)],q[len-ij]));
+        x = min(x,dist(t[(len-ij+3)],q[len-ij]));
+        x = min(x,dist(t[(len-ij+2)],q[len-ij]));
+        x = min(x,dist(t[(len-ij+1)],q[len-ij]));
+        y = min(dist(t[(len-ij+7)],q[len-ij]),dist(t[(len-ij+6)],q[len-ij]));
+        y = min(y,dist(t[(len-ij+5)],q[len-ij]));
+        y = min(y,dist(t[(len-ij+4)],q[len-ij]));
+        y = min(y,dist(t[(len-ij+3)],q[len-ij]));
+        y = min(y,dist(t[(len-ij+2)],q[len-ij]));
+        y = min(y,dist(t[(len-ij+1)],q[len-ij]));
+        z = min(y,x);
+        z = min(z,dist(t[(len-ij)],q[len-ij]));
+
+        if (dist(t[(len - ij + 7)], q[len - ij]) < dist(t[(len - ij + 6)], q[len - ij]) ||
+            dist(t[(len - ij + 7)], q[len - ij]) < dist(t[(len - ij + 6)], q[len - ij])) { return lb + z + C_COST; }
+
+        lb += z;
+        if (lb >= bsf)   return lb;
+    }
+    return lb;
+}
+*/
+/*
+/// Calculate quick lower bound
+/// Die Punkte zwischen zwei Moves die kleiner als C_COST sind haben immer mindestens Kosten von C_COST
+double lb_sakoe_tree(double *t, double *q, int len, double bsf)
+{
+    double lb, d,r,l,x,y;
+    double tmpt = t[(len-1)];
+    double tmpq = q[(len-1)];
+    int wid=1;
+    lb = dist(tmpt,tmpq);
+    if (lb >= bsf)   return lb;
+    for(int ij = 2; ij<len-8; ij++){
+        switch(wid) {
+            case 1:
+                d = dist(t[(len - ij)], q[len - ij]);
+                if (dist(t[(len - ij)], q[len - ij]) < dist(t[(len - ij + wid)], q[len - ij]) ||
+                    dist(t[(len - ij)], q[len - ij]) < dist(t[(len - ij)], q[len - ij+wid])) wid++;
+                else break;
+                d = min(dist(t[(len - ij+1)], q[len - ij]),dist(t[(len - ij)], q[len - ij+1]));
+            case 2:
+                x = min(dist(t[(len-ij+1)],q[len-ij]),dist(t[(len-ij)],q[len-ij]));
+                y = min(dist(t[(len-ij)],q[len-ij+1]),dist(t[(len-ij)],q[len-ij]));
+                d = min(y,x);
+                d = min(d,dist(t[(len-ij)],q[len-ij]));
+                if (dist(t[(len - ij+ wid-1)], q[len - ij]) < dist(t[(len - ij + wid)], q[len - ij]) ||
+                    dist(t[(len - ij)], q[len - ij+ wid-1]) < dist(t[(len - ij)], q[len - ij+wid])) wid++;
+                else break;
+            case 3:
+                x = min(dist(t[(len-ij+2)],q[len-ij]),dist(t[(len-ij+1)],q[len-ij]));
+                y = min(dist(t[(len-ij)],q[len-ij+1]),dist(t[(len-ij)],q[len-ij+2]));
+                d = min(y,x);
+                d = min(d,dist(t[(len-ij)],q[len-ij]));
+                if (dist(t[(len - ij+ wid-1)], q[len - ij]) < dist(t[(len - ij + wid)], q[len - ij]) ||
+                    dist(t[(len - ij)], q[len - ij+ wid-1]) < dist(t[(len - ij)], q[len - ij+wid])) wid++;
+                else break;
+            case 4:
+                x = min(dist(t[(len-ij+3)],q[len-ij]),dist(t[(len-ij+2)],q[len-ij]));
+                x = min(x,dist(t[(len-ij+1)],q[len-ij]));
+                y = min(dist(t[(len-ij)],q[len-ij+3]),dist(t[(len-ij)],q[len-ij+1]));
+                y = min(x,dist(t[(len-ij)],q[len-ij+1]));
+                d = min(y,x);
+                d = min(d,dist(t[(len-ij)],q[len-ij]));
+                if (dist(t[(len - ij+ wid-1)], q[len - ij]) < dist(t[(len - ij + wid)], q[len - ij]) ||
+                    dist(t[(len - ij)], q[len - ij+ wid-1]) < dist(t[(len - ij)], q[len - ij+wid])) wid++;
+                else break;
+            case 5:
+                x = min(dist(t[(len-ij+4)],q[len-ij]),dist(t[(len-ij+3)],q[len-ij]));
+                x = min(x,dist(t[(len-ij+2)],q[len-ij]));
+                x = min(x,dist(t[(len-ij+1)],q[len-ij]));
+                y = min(dist(t[(len-ij)],q[len-ij+4]),dist(t[(len-ij)],q[len-ij+3]));
+                y = min(x,dist(t[(len-ij)],q[len-ij+2]));
+                y = min(x,dist(t[(len-ij)],q[len-ij+1]));
+                d = min(y,x);
+                d = min(d,dist(t[(len-ij)],q[len-ij]));
+                if (dist(t[(len - ij+ wid-1)], q[len - ij]) < dist(t[(len - ij + wid)], q[len - ij]) ||
+                    dist(t[(len - ij)], q[len - ij+ wid-1]) < dist(t[(len - ij)], q[len - ij+wid])) wid++;
+                else break;
+            case 6:
+                x = min(dist(t[(len-ij+5)],q[len-ij]),dist(t[(len-ij+4)],q[len-ij]));
+                x = min(x,dist(t[(len-ij+3)],q[len-ij]));
+                x = min(x,dist(t[(len-ij+2)],q[len-ij]));
+                x = min(x,dist(t[(len-ij+1)],q[len-ij]));
+                y = min(dist(t[(len-ij)],q[len-ij+5]),dist(t[(len-ij)],q[len-ij+4]));
+                y = min(x,dist(t[(len-ij)],q[len-ij+3]));
+                y = min(x,dist(t[(len-ij)],q[len-ij+2]));
+                y = min(x,dist(t[(len-ij)],q[len-ij+1]));
+                d = min(y,x);
+                d = min(d,dist(t[(len-ij)],q[len-ij]));
+                if (dist(t[(len - ij+ wid-1)], q[len - ij]) < dist(t[(len - ij + wid)], q[len - ij]) ||
+                    dist(t[(len - ij)], q[len - ij+ wid-1]) < dist(t[(len - ij)], q[len - ij+wid])) wid++;
+                else break;
+            case 7:
+                x = min(dist(t[(len-ij+6)],q[len-ij]),dist(t[(len-ij+5)],q[len-ij]));
+                x = min(x,dist(t[(len-ij+4)],q[len-ij]));
+                x = min(x,dist(t[(len-ij+3)],q[len-ij]));
+                x = min(x,dist(t[(len-ij+2)],q[len-ij]));
+                x = min(x,dist(t[(len-ij+1)],q[len-ij]));
+                y = min(dist(t[(len-ij)],q[len-ij+6]),dist(t[(len-ij)],q[len-ij+5]));
+                y = min(x,dist(t[(len-ij)],q[len-ij+4]));
+                y = min(x,dist(t[(len-ij)],q[len-ij+3]));
+                y = min(x,dist(t[(len-ij)],q[len-ij+2]));
+                y = min(x,dist(t[(len-ij)],q[len-ij+1]));
+                d = min(y,x);
+                d = min(d,dist(t[(len-ij)],q[len-ij]));
+                if (dist(t[(len - ij+ wid-1)], q[len - ij]) < dist(t[(len - ij + wid)], q[len - ij]) ||
+                    dist(t[(len - ij)], q[len - ij+ wid-1]) < dist(t[(len - ij)], q[len - ij+wid])) return lb;
+                else break;
+            default: printf("a ist irgendwas\n"); break;
+        }
+        lb += d;
+        if (lb >= bsf)   return lb;
+    }
+    return lb;
+}
+*/
+double lb_sakoe_tree(double *t, double *q, int len, double bsf)
+{
+    double lb, d,r,l,x,y;
+    double tmpt = t[(len-1)];
+    double tmpq = q[(len-1)];
+    int wid=1, maxwid=20;
+    lb = dist(tmpt,tmpq);
+    if (lb >= bsf)   return lb;
+    for(int ij = 2; ij<len-maxwid; ij++){
+        switch(wid) {
+            case 1:
+                d = dist(t[(len - ij)], q[len - ij]);
+                if (dist(t[(len - ij)], q[len - ij]) > dist(t[(len - ij + wid)], q[len - ij])||
+                    dist(t[(len - ij)], q[len - ij]) > dist(t[(len - ij)], q[len - ij + wid]))
+                {wid++;}
+                else break;
+                d = min(dist(t[(len - ij + 1)], q[len - ij]), dist(t[(len - ij)], q[len - ij + 1]));
+            case 2:
+                x = min(dist(t[(len - ij + 1)], q[len - ij]), dist(t[(len - ij)], q[len - ij]));
+                y = min(dist(t[(len - ij)], q[len - ij + 1]), dist(t[(len - ij)], q[len - ij]));
+                d = min(y, x);
+                d = min(d, dist(t[(len - ij)], q[len - ij]));
+                if (dist(t[(len - ij + wid - 1)], q[len - ij]) > dist(t[(len - ij + wid)], q[len - ij])||
+                    dist(t[(len - ij)], q[len - ij + wid - 1]) > dist(t[(len - ij)], q[len - ij + wid]))
+                {wid++;}
+                else break;
+            default:
+                x = min(dist(t[(len - ij + wid - 1)], q[len - ij]), dist(t[(len - ij + wid - 2)], q[len - ij]));
+
+                if (wid > 3) {
+                    for (int w = 1; w < wid - 3; w++) {
+                        x = min(x, dist(t[(len - ij + w)], q[len - ij]));
+                        y = min(x, dist(t[(len - ij)], q[len - ij + w]));
+                    }
+                    d = min(y, x);
+                    d = min(d, dist(t[(len - ij)], q[len - ij]));
+                }
+
+                if (dist(t[(len - ij+ wid-1)], q[len - ij]) > dist(t[(len - ij + wid)], q[len - ij])||
+                    dist(t[(len - ij)], q[len - ij+ wid-1]) > dist(t[(len - ij)], q[len - ij+wid])) {
+                    if(wid==maxwid){
+                        return lb;
+                    }
+                    wid++;
+                }else break;
+        }
+        lb += d;
+        if (lb >= bsf)   return lb;
+    }
+    return lb;
+}
+
 
 double* calculateMsmGreedyArray(double *X, double *Y, int m)
 {
@@ -135,7 +318,6 @@ double C(double new_point, double x, double y)
 
 double getLowerBound(int xCoord, int yCoord)
 {
-
     return fabs(xCoord - yCoord) * C_COST;
 }
 
@@ -145,8 +327,7 @@ double getLowerBound(int xCoord, int yCoord)
  * @return pair: first Double: Distance, second Double: relative amount of pruned cells
  * msmDistPruned by Jana Holznigenkemper
  */
-//double msmDistPruned(const vector<double> &X, const vector<double> &Y)
-double msmDistPruned(double *X, double *Y, int m)
+double msmDistPruned(double *X, double *Y, int m, double bsf)
 {
 
     double* upperBoundArray = calculateMsmGreedyArray(X, Y, m);
@@ -169,7 +350,6 @@ double msmDistPruned(double *X, double *Y, int m)
     int i, j, k;
     double* tmpArray = malloc((m+2) * sizeof(double));
     for(k=0; k<m+2; k++)    tmpArray[k]=INF;
-    //vector<double> tmpArray = vector<double>(m + 1, INF);
 
     // value storing the first "real value" of the array before overwriting it
     //  the first value of the first row has to be 0
@@ -180,7 +360,7 @@ double msmDistPruned(double *X, double *Y, int m)
     unsigned int ec = 1;
 
     // remember if an entry smaller than UB was found -> cannot cut
-    bool smallerFound;
+    bool smallerFound, smaller_as_bsf;
     int ecNext;
 
     // initialize first row
@@ -204,6 +384,7 @@ double msmDistPruned(double *X, double *Y, int m)
         // the upper bound (Euclidean distance = diagonal path)
         ecNext = i;
         smallerFound = false;
+        smaller_as_bsf = false;
         // column index
         for (j = start; j < end; j++)
         {
@@ -220,6 +401,9 @@ double msmDistPruned(double *X, double *Y, int m)
 
             tmpArray[j] = min(d1, min(d2, d3));
 
+            if (tmpArray[j] < bsf) {
+                smaller_as_bsf = true;
+            }
             // PruningExperiments strategy
             double lb = getLowerBound(i, j);
 
@@ -244,6 +428,7 @@ double msmDistPruned(double *X, double *Y, int m)
                 upperBound = tmpArray[j] + upperBoundArray[j] + 0.00001;
             }
         }
+        if (!smaller_as_bsf) return INF;
 
         for(k=1; k<sc; k++)    tmpArray[k]=INF;
         // set tmp to infinity since the move computation in the next row is not possible and accesses tmp
@@ -268,7 +453,7 @@ int main(  int argc , char *argv[] )
     char dataset[50];
     char querypath[200];
     char sequencepath[200];
-    double d, t1, t2, bsf, distance, bclass, acc;
+    double d, t1, t2, bsf, distance, bclass, acc, glb;
 
     //read args
     if (argc<=4)
@@ -342,13 +527,18 @@ int main(  int argc , char *argv[] )
         bsf = INF;
         for (int j = 0; j < sequence_size; j++){
 
-            distance = msmDistPruned(q_file[i], s_file[j], m);
-
-            if(distance < bsf)
-            {
-                bsf = distance;
-                bclass = sclass[j];
+            glb = lb_sakoe_tree(s_file[j], q_file[i], m, bsf);
+            if(glb < bsf){
+                distance = msmDistPruned(q_file[i], s_file[j], m, bsf);
+                if(distance < bsf)
+                {
+                    bsf = distance;
+                    bclass = sclass[j];
+                }
+            }else{
+                printf("wuhu");
             }
+
         }
         if(qclass[i] == bclass)   tp++;
     }
@@ -370,7 +560,7 @@ int main(  int argc , char *argv[] )
     acc = (double)tp / (double)query_size;
     FILE *rd = NULL;    //result data
     rd = fopen("results.csv", "a");
-    fprintf(rd,"%s,%s,%f,%f\n", "PrunedMSMSearch_DA",dataset,acc, (t2-t1)/CLOCKS_PER_SEC);
+    fprintf(rd,"%s,%s,%f,%f\n", "PMSMSearch with LB_SakoeTree",dataset,acc, (t2-t1)/CLOCKS_PER_SEC);
     fclose(rd);
     return 0;
 }

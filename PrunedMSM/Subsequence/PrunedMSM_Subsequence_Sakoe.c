@@ -42,14 +42,6 @@ typedef struct Index
     int    index;
 } Index;
 
-/// Data structure (circular array) for finding minimum and maximum for LB_Keogh envolop
-struct deque
-{   int *dq;
-    int size,capacity;
-    int f,r;
-};
-
-
 /// Sorting function for the query, sort by abs(z_norm(q[i])) from high to low
 int comp(const void *a, const void* b)
 {   Index* x = (Index*)a;
@@ -57,155 +49,6 @@ int comp(const void *a, const void* b)
     return abs(y->value) - abs(x->value);   // high to low
 }
 
-/// Initial the queue at the begining step of envelop calculation
-void init(struct deque *d, int capacity)
-{
-    d->capacity = capacity;
-    d->size = 0;
-    d->dq = (int *) malloc(sizeof(int)*d->capacity);
-    d->f = 0;
-    d->r = d->capacity-1;
-}
-
-/// Destroy the queue
-void destroy(struct deque *d)
-{
-    free(d->dq);
-}
-
-/// Insert to the queue at the back
-void push_back(struct deque *d, int v)
-{
-    d->dq[d->r] = v;
-    d->r--;
-    if (d->r < 0)
-        d->r = d->capacity-1;
-    d->size++;
-}
-
-/// Delete the current (front) element from queue
-void pop_front(struct deque *d)
-{
-    d->f--;
-    if (d->f < 0)
-        d->f = d->capacity-1;
-    d->size--;
-}
-
-/// Delete the last element from queue
-void pop_back(struct deque *d)
-{
-    d->r = (d->r+1)%d->capacity;
-    d->size--;
-}
-
-/// Get the value at the current position of the circular queue
-int front(struct deque *d)
-{
-    int aux = d->f - 1;
-
-    if (aux < 0)
-        aux = d->capacity-1;
-    return d->dq[aux];
-}
-
-/// Get the value at the last position of the circular queueint back(struct deque *d)
-int back(struct deque *d)
-{
-    int aux = (d->r+1)%d->capacity;
-    return d->dq[aux];
-}
-
-/// Check whether or not the queue is empty
-int empty(struct deque *d)
-{
-    return d->size == 0;
-}
-
-/*
-/// Calculate quick lower bound
-/// Die Punkte zwischen zwei Moves die kleiner als C_COST sind haben immer mindestens Kosten von C_COST
-double lb_kim_hierarchy(double *t, double *q, int len, double bsf)
-{
-    double lb,d,e,f;
-    lb = dist(t[(len-1)],q[len-1]);
-    if (lb >= bsf)   return lb;
-    d = min(dist(t[(len-1)],q[len-2]),dist(t[(len-2)],q[len-1]));
-    lb += min(d,dist(t[(len-2)],q[len-2]));
-    if (lb >= bsf)   return lb;
-    d = min(dist(t[(len-3)],q[len-1]),dist(t[(len-3)],q[len-2]));
-    e = min(dist(t[(len-1)],q[len-3]),dist(t[(len-2)],q[len-3]));
-    d = min(d,dist(t[(len-3)],q[len-3]));
-    lb += min(d,e);
-    if (lb >= bsf)   return lb;
-    d = min(dist(t[(len-4)],q[len-1]),dist(t[(len-4)],q[len-2]));
-    d = min(d,dist(t[(len-4)],q[len-3]));
-    e = min(dist(t[(len-1)],q[len-4]),dist(t[(len-2)],q[len-4]));
-    e = min(e,dist(t[(len-3)],q[len-4]));
-    d = min(d,dist(t[(len-4)],q[len-4]));
-    lb += min(d,e);
-    if (lb >= bsf)   return lb;
-    d = min(dist(t[(len-5)],q[len-1]),dist(t[(len-5)],q[len-2]));
-    d = min(d,dist(t[(len-5)],q[len-3]));
-    d = min(d,dist(t[(len-5)],q[len-4]));
-    e = min(dist(t[(len-1)],q[len-5]),dist(t[(len-2)],q[len-5]));
-    e = min(e,dist(t[(len-3)],q[len-5]));
-    e = min(e,dist(t[(len-4)],q[len-5]));
-    d = min(d,dist(t[(len-5)],q[len-5]));
-    lb += min(d,e);
-    if (lb >= bsf)   return lb;
-    d = min(dist(t[(len-6)],q[len-1]),dist(t[(len-6)],q[len-2]));
-    d = min(d,dist(t[(len-6)],q[len-3]));
-    d = min(d,dist(t[(len-6)],q[len-4]));
-    d = min(d,dist(t[(len-6)],q[len-5]));
-    e = min(dist(t[(len-1)],q[len-6]),dist(t[(len-2)],q[len-6]));
-    e = min(e,dist(t[(len-3)],q[len-6]));
-    e = min(e,dist(t[(len-4)],q[len-6]));
-    e = min(e,dist(t[(len-5)],q[len-6]));
-    d = min(d,dist(t[(len-5)],q[len-5]));
-    lb += min(d,e);
-    if (lb >= bsf)   return lb;
-
-    return lb;
-}
-*/
-
-/// not exact but fast.
-double lb_kim_hierarchy(double *t, double *q, int j, int len, double bsf, double mean, double std)
-{
-    double lb,d,e;
-    double tmpt, tmpq;
-    double tmpt_last = (t[len-1+j] - mean) / std;
-    double tmpq_last = q[(len-1)];
-    lb = dist(tmpt_last,tmpq_last);
-    if (lb >= bsf)   return lb;
-    for(int ij = 2; ij<len; ij++){
-        tmpt = (t[len-ij+j] - mean) / std;
-        tmpq = q[(len-ij)];
-        d = min(dist(tmpt_last,tmpq),dist(tmpt,tmpq_last));
-        e = min(d+C_COST,dist(tmpt,tmpq));
-        lb+= min(2*C_COST,e);
-        if (lb >= bsf)   return lb;
-        tmpt_last = tmpt;
-        tmpq_last = tmpq;
-    }
-    return lb;
-}
-double lb_edcost_h(double *t, double *q, int len, double bsf)
-{
-    double lb;
-    lb = dist(t[(len-1)],q[len-1]);
-    if (lb >= bsf)   return lb;
-    for(int l = 2; l<len; l++){
-        if(dist(t[(len-l)],q[len-l]) >= C_COST) {
-            lb += C_COST;
-        }else{
-            lb += dist(t[(len-l)],q[len-l]);
-        }
-        if (lb >= bsf)   return lb;
-    }
-    return lb;
-}
 //vector<double> calculateMsmGreedyArray(const vector<double> &X, const vector<double> &Y)
 double *calculateMsmGreedyArray(double *X, double *Y, int m)
 {
@@ -323,7 +166,7 @@ double getLowerBound(int xCoord, int yCoord)
  * msmDistPruned by Jana Holznigenkemper
  */
 //double msmDistPruned(const vector<double> &X, const vector<double> &Y)
-double msmDistPruned(double *X, double *Y, int m, double bsf)
+double msmDistPruned(double *X, double *Y, int m, double sakoe_bandwidth)
 {
 
     // const vector<double>::size_type m = X.size();
@@ -378,6 +221,7 @@ double msmDistPruned(double *X, double *Y, int m, double bsf)
 
         // compute bandwidth regarding the upper bound
         unsigned int bandwidth = computeBandwidth(upperBound);
+        if (sakoe_bandwidth < bandwidth) bandwidth = sakoe_bandwidth;
         unsigned int start = (bandwidth > i) ? sc : max(sc, i - bandwidth);
 
         //unsigned int end = min(i + bandwidth + 1, tmpArray.size());
@@ -407,9 +251,11 @@ double msmDistPruned(double *X, double *Y, int m, double bsf)
             // store old entry before overwriting
             tmp = tmpArray[j];
             tmpArray[j] = min(d1, min(d2, d3));
+            /*
             if (tmpArray[j] < bsf) {
                 smaller_as_bsf = true;
             }
+*/
             // PruningExperiments strategy
             double lb = getLowerBound(i, j);
             if ((tmpArray[j] + lb) > upperBound)
@@ -434,7 +280,7 @@ double msmDistPruned(double *X, double *Y, int m, double bsf)
             }
         }
 
-        if(!smaller_as_bsf) return INF;
+        //if (!smaller_as_bsf) return INF;
         // tmpArray = this.fillWithInf(1, sc, tmpArray);
         for(k=1; k<sc; k++)    tmpArray[k]=INF;
         //fill(tmpArray.begin() + 1, tmpArray.begin() + sc, INF);
@@ -478,12 +324,11 @@ int main(  int argc , char *argv[] )
 
     double d;
     long long i , j;
-    double ex , ex2 , mean, std;
+    double ex , ex2 , mean, std, bandwidth;
     int m=-1, r=-1;
     long long loc = 0;
     double t1,t2;
-    int edcost = 0,kim = 0, keogh2 = 0;
-    double distCalc=0, lb_edcost=0, lb_k=0, lb_k2=0;
+    double distCalc=0;
     double *buffer, *u_buff, *l_buff;
     Index *Q_tmp;
 
@@ -498,13 +343,11 @@ int main(  int argc , char *argv[] )
     if (argc>3)
         m = atol(argv[3]);
 
-    /// read warping windows
+    /// read Sakoe
     if (argc>4)
-    {   double R = atof(argv[4]);
-        if (R<=1)
-            r = floor(R*m);
-        else
-            r = floor(R);
+    {
+        bandwidth = atol(argv[5]);
+        bandwidth = ((double)bandwidth/100.0)*m;
     }
 
     fp = fopen(argv[1],"r");
@@ -612,6 +455,9 @@ int main(  int argc , char *argv[] )
     for( i = 0 ; i < m ; i++ )
         q[i] = (q[i] - mean)/std;
 
+    /// Create envelop of the query: lower envelop, l, and upper envelop, u
+    //lower_upper_lemire(q, m, r, l, u);
+
     /// Sort the query one time by abs(z-norm(q[i]))
     for( i = 0; i<m; i++)
     {
@@ -707,30 +553,21 @@ int main(  int argc , char *argv[] )
                     /// the start location of the data in the current chunk
                     I = i-(m-1);
 
-                    /// Use a constant lower bound to prune the obvious subsequence
-                    lb_edcost = lb_kim_hierarchy(t, q, j, m, bsf, mean, std);
-                    if (lb_edcost < bsf)
+                    for(k=0;k<m;k++)
                     {
+                        tz[k] = (t[(k+j)] - mean)/std;
+                    }
 
-                        for(k=0;k<m;k++)
-                        {
-                            tz[k] = (t[(k+j)] - mean)/std;
-                        }
-                        //lb_edcost = lb_edcost_h(tz, q, m, bsf);
-                        //if (lb_edcost < bsf)
-                        //{
-                            //lb_edcost = lb_kim_hierarchy(tz, q, m, bsf);
-                            distCalc = msmDistPruned(tz,q,m,bsf);
-                            if( distCalc < bsf )
-                            {   /// Update bsf
-                                bsf = distCalc;
-                                loc = (it)*(EPOCH-m+1) + i-m+1;
-                            }
-                        //} else
-                        //    edcost++;
-                    } else
-                        kim++;
+                    distCalc = msmDistPruned(tz,q,m, bandwidth);
 
+                    if( distCalc < bsf )
+
+                    {   /// Update bsf
+
+                        bsf = distCalc;
+                        loc = (it)*(EPOCH-m+1) + i-m+1;
+
+                    }
                     /// Reduce obsolute points from sum and sum square
                     ex -= t[j];
                     ex2 -= t[j]*t[j];
@@ -765,14 +602,15 @@ int main(  int argc , char *argv[] )
     free(u_buff);
 
     t2 = clock();
-
     printf("\n");
-    printf("Pruned by LB_KIM    : %6.2f%%\n", ((double) kim / i)*100);
-    printf("Pruned by LB_CostH    : %6.2f%%\n", ((double) edcost / i)*100);
-    printf("PMSM Calculation     : %6.2f%%\n", 100-(((double)edcost+kim)/i*100));
+
+    /// printf is just easier for formating ;)
+    printf("\n");
+
+
     FILE *rd = NULL;    //result data
     rd = fopen("subsequence_results.csv", "a");
-    fprintf(rd,"%s,%i,%lli,%f,%lld,%d,%f\n", "PMSMSearch with LB_CostH", m,i,bsf,loc,kim, (t2-t1)/CLOCKS_PER_SEC);
+    fprintf(rd,"%s %s,%i,%lli,%f,%lld,%f\n", "PrunedMSM with Sakoe", argv[5], m,i,bsf,loc, (t2-t1)/CLOCKS_PER_SEC);
     fclose(rd);
 
     return 0;

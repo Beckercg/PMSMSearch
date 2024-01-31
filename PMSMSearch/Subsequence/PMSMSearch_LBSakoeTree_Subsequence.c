@@ -169,9 +169,62 @@ double lb_kim_hierarchy(double *t, double *q, int len, double bsf)
     return lb;
 }
 */
+double lb_sakoe_tree(double *t, double *q, int len, double bsf)
+{
+    double lb, d,r,l,x,y;
+    double tmpt = t[(len-1)];
+    double tmpq = q[(len-1)];
+    int wid=1, maxwid=230;
+    lb = dist(tmpt,tmpq);
+    if (lb >= bsf)   return lb;
+    for(int ij = 2; ij<len-maxwid; ij++){
+        switch(wid) {
+            case 1:
+                d = dist(t[(len - ij)], q[len - ij]);
+                if (dist(t[(len - ij)], q[len - ij]) > dist(t[(len - ij + wid)], q[len - ij])||
+                    dist(t[(len - ij)], q[len - ij]) > dist(t[(len - ij)], q[len - ij + wid]))
+                {wid++;}
+                else break;
+                d = min(dist(t[(len - ij + 1)], q[len - ij]), dist(t[(len - ij)], q[len - ij + 1]));
+            case 2:
+                x = min(dist(t[(len - ij + 1)], q[len - ij]), dist(t[(len - ij)], q[len - ij]));
+                y = min(dist(t[(len - ij)], q[len - ij + 1]), dist(t[(len - ij)], q[len - ij]));
+                d = min(y, x);
+                d = min(d, dist(t[(len - ij)], q[len - ij]));
+                if (dist(t[(len - ij + wid - 1)], q[len - ij]) > dist(t[(len - ij + wid)], q[len - ij])||
+                    dist(t[(len - ij)], q[len - ij + wid - 1]) > dist(t[(len - ij)], q[len - ij + wid]))
+                {wid++;}
+                else break;
+            default:
+                x = min(dist(t[(len - ij + wid - 1)], q[len - ij]), dist(t[(len - ij + wid - 2)], q[len - ij]));
 
-/// not exact but fast.
-double lb_kim_hierarchy(double *t, double *q, int j, int len, double bsf, double mean, double std)
+                if (wid > 3) {
+                    for (int w = 1; w < wid - 3; w++) {
+                        x = min(x, dist(t[(len - ij + w)], q[len - ij]));
+                        y = min(x, dist(t[(len - ij)], q[len - ij + w]));
+                    }
+                    d = min(y, x);
+                    d = min(d, dist(t[(len - ij)], q[len - ij]));
+                }
+
+                if (dist(t[(len - ij+ wid-1)], q[len - ij]) > dist(t[(len - ij + wid)], q[len - ij])||
+                    dist(t[(len - ij)], q[len - ij+ wid-1]) > dist(t[(len - ij)], q[len - ij+wid])) {
+                    if(wid==maxwid){
+                        return lb;
+                    }
+                    wid++;
+                }else break;
+        }
+        lb += d;
+        if (lb >= bsf)   return lb;
+    }
+    return lb;
+}
+
+
+/// Calculate quick lower bound
+/// Die Punkte zwischen zwei Moves die kleiner als C_COST sind haben immer mindestens Kosten von C_COST
+double lb_kim2_hierarchy(double *t, double *q, int j, int len, double bsf, double mean, double std)
 {
     double lb,d,e;
     double tmpt, tmpq;
@@ -191,21 +244,7 @@ double lb_kim_hierarchy(double *t, double *q, int j, int len, double bsf, double
     }
     return lb;
 }
-double lb_edcost_h(double *t, double *q, int len, double bsf)
-{
-    double lb;
-    lb = dist(t[(len-1)],q[len-1]);
-    if (lb >= bsf)   return lb;
-    for(int l = 2; l<len; l++){
-        if(dist(t[(len-l)],q[len-l]) >= C_COST) {
-            lb += C_COST;
-        }else{
-            lb += dist(t[(len-l)],q[len-l]);
-        }
-        if (lb >= bsf)   return lb;
-    }
-    return lb;
-}
+
 //vector<double> calculateMsmGreedyArray(const vector<double> &X, const vector<double> &Y)
 double *calculateMsmGreedyArray(double *X, double *Y, int m)
 {
@@ -482,8 +521,8 @@ int main(  int argc , char *argv[] )
     int m=-1, r=-1;
     long long loc = 0;
     double t1,t2;
-    int edcost = 0,kim = 0, keogh2 = 0;
-    double distCalc=0, lb_edcost=0, lb_k=0, lb_k2=0;
+    int sakoetree = 0;
+    double distCalc=0, global_lb=0, lb_k=0, lb_k2=0;
     double *buffer, *u_buff, *l_buff;
     Index *Q_tmp;
 
@@ -708,28 +747,23 @@ int main(  int argc , char *argv[] )
                     I = i-(m-1);
 
                     /// Use a constant lower bound to prune the obvious subsequence
-                    lb_edcost = lb_kim_hierarchy(t, q, j, m, bsf, mean, std);
-                    if (lb_edcost < bsf)
+                    for(k=0;k<m;k++)
+                    {
+                        tz[k] = (t[(k+j)] - mean)/std;
+                    }
+                    global_lb = lb_sakoe_tree(tz, q,  m, bsf);
+                    if (global_lb < bsf)
                     {
 
-                        for(k=0;k<m;k++)
-                        {
-                            tz[k] = (t[(k+j)] - mean)/std;
-                        }
-                        //lb_edcost = lb_edcost_h(tz, q, m, bsf);
-                        //if (lb_edcost < bsf)
-                        //{
-                            //lb_edcost = lb_kim_hierarchy(tz, q, m, bsf);
                             distCalc = msmDistPruned(tz,q,m,bsf);
                             if( distCalc < bsf )
                             {   /// Update bsf
                                 bsf = distCalc;
                                 loc = (it)*(EPOCH-m+1) + i-m+1;
                             }
-                        //} else
-                        //    edcost++;
-                    } else
-                        kim++;
+                    } else{
+                        sakoetree++;
+                    }
 
                     /// Reduce obsolute points from sum and sum square
                     ex -= t[j];
@@ -767,12 +801,11 @@ int main(  int argc , char *argv[] )
     t2 = clock();
 
     printf("\n");
-    printf("Pruned by LB_KIM    : %6.2f%%\n", ((double) kim / i)*100);
-    printf("Pruned by LB_CostH    : %6.2f%%\n", ((double) edcost / i)*100);
-    printf("PMSM Calculation     : %6.2f%%\n", 100-(((double)edcost+kim)/i*100));
+    printf("Pruned by LB_SakoeTree    : %6.2f%%\n", ((double) sakoetree / i)*100);
+    printf("PMSM Calculation     : %6.2f%%\n", 100-(((double)sakoetree)/i*100));
     FILE *rd = NULL;    //result data
     rd = fopen("subsequence_results.csv", "a");
-    fprintf(rd,"%s,%i,%lli,%f,%lld,%d,%f\n", "PMSMSearch with LB_CostH", m,i,bsf,loc,kim, (t2-t1)/CLOCKS_PER_SEC);
+    fprintf(rd,"%s,%i,%lli,%f,%lld,%d,%f\n", "PMSMSearch with LB_SakoeTree", m,i,bsf,loc,sakoetree, (t2-t1)/CLOCKS_PER_SEC);
     fclose(rd);
 
     return 0;

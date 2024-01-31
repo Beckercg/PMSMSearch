@@ -54,7 +54,10 @@ struct deque
 int comp(const void *a, const void* b)
 {   Index* x = (Index*)a;
     Index* y = (Index*)b;
-    return abs(y->value) - abs(x->value);   // high to low
+    double diff = x->value - y->value;
+    if (diff > 0) return 1;
+    else if (diff < 0) return -1;
+    else return 0;
 }
 
 /// Initial the queue at the begining step of envelop calculation
@@ -169,9 +172,59 @@ double lb_kim_hierarchy(double *t, double *q, int len, double bsf)
     return lb;
 }
 */
+double lb_sorted(Index *t, Index *q, int len, double bsf)
+{
 
-/// not exact but fast.
-double lb_kim_hierarchy(double *t, double *q, int j, int len, double bsf, double mean, double std)
+    double lb, d, t_check, q_check;
+    int tmp_l;
+
+    for(int l = 1; l<len; l++){
+        //t_check = dist(t[l+1].value, q[l].value);
+        //q_check = dist(t[l].value, q[l+1].value);
+        lb += min(dist(t[l].value, q[l].value),2*C_COST);
+        /*
+        if (t_check < d || q_check < d) {
+            if(t_check<=q_check){
+                if(t_check>2*C_COST)t_check=2*C_COST;
+                lb += t_check;
+                tmp_l=l;
+                l++;
+                while(dist(t[l].value, q[l].value) > t_check){
+                    t_check = dist(t[l].value, q[tmp_l].value);
+                    if(t_check>2*C_COST)t_check=2*C_COST;
+                    lb += t_check;
+                    l++;
+                }
+            }else{
+                if(q_check>2*C_COST)q_check=2*C_COST;
+                lb += q_check;
+                tmp_l=l;
+                l++;
+                while(dist(t[l].value, q[l].value) > q_check){
+                    q_check = dist(t[tmp_l].value, q[l].value);
+                    if(q_check>2*C_COST)q_check=2*C_COST;
+                    lb += q_check;
+                    l++;
+                }
+
+            }
+        }else {
+            if(d>2*C_COST)d=2*C_COST;
+            lb += d;
+        }
+         */
+        if (lb >= bsf)   {
+            return lb;
+        }
+    }
+
+    return lb;
+}
+
+
+/// Calculate quick lower bound
+/// Die Punkte zwischen zwei Moves die kleiner als C_COST sind haben immer mindestens Kosten von C_COST
+double lb_kim2_hierarchy(double *t, double *q, int j, int len, double bsf, double mean, double std)
 {
     double lb,d,e;
     double tmpt, tmpq;
@@ -191,21 +244,7 @@ double lb_kim_hierarchy(double *t, double *q, int j, int len, double bsf, double
     }
     return lb;
 }
-double lb_edcost_h(double *t, double *q, int len, double bsf)
-{
-    double lb;
-    lb = dist(t[(len-1)],q[len-1]);
-    if (lb >= bsf)   return lb;
-    for(int l = 2; l<len; l++){
-        if(dist(t[(len-l)],q[len-l]) >= C_COST) {
-            lb += C_COST;
-        }else{
-            lb += dist(t[(len-l)],q[len-l]);
-        }
-        if (lb >= bsf)   return lb;
-    }
-    return lb;
-}
+
 //vector<double> calculateMsmGreedyArray(const vector<double> &X, const vector<double> &Y)
 double *calculateMsmGreedyArray(double *X, double *Y, int m)
 {
@@ -482,10 +521,10 @@ int main(  int argc , char *argv[] )
     int m=-1, r=-1;
     long long loc = 0;
     double t1,t2;
-    int edcost = 0,kim = 0, keogh2 = 0;
-    double distCalc=0, lb_edcost=0, lb_k=0, lb_k2=0;
+    int lbsorted = 0;
+    double distCalc=0, global_lb=0, lb_k=0, lb_k2=0;
     double *buffer, *u_buff, *l_buff;
-    Index *Q_tmp;
+    Index *Q_tmp, *T_tmp;
 
     /// For every EPOCH points, all cummulative values, such as ex (sum), ex2 (sum square), will be restarted for reducing the floating point error.
     int EPOCH = 100000;
@@ -540,6 +579,9 @@ int main(  int argc , char *argv[] )
     Q_tmp = (Index *)malloc(sizeof(Index)*m);
     if( Q_tmp == NULL )
         error(1);
+    T_tmp = (Index *)malloc(sizeof(Index)*m);
+    if( T_tmp == NULL )
+        error(1);
 
     u = (double *)malloc(sizeof(double)*m);
     if( u == NULL )
@@ -589,7 +631,6 @@ int main(  int argc , char *argv[] )
     if( l_buff == NULL )
         error(1);
 
-
     /// Read query file
     bsf = INF;
     i = 0;
@@ -628,7 +669,6 @@ int main(  int argc , char *argv[] )
         uo[i] = u[o];
         lo[i] = l[o];
     }
-    free(Q_tmp);
 
     /// Initial the cummulative lower bound
     for( i=0; i<m; i++)
@@ -636,7 +676,6 @@ int main(  int argc , char *argv[] )
         cb1[i]=0;
         cb2[i]=0;
     }
-
     i = 0;          /// current index of the data in current chunk of size EPOCH
     j = 0;          /// the starting index of the data in the circular array, t
     ex = ex2 = 0;
@@ -708,28 +747,28 @@ int main(  int argc , char *argv[] )
                     I = i-(m-1);
 
                     /// Use a constant lower bound to prune the obvious subsequence
-                    lb_edcost = lb_kim_hierarchy(t, q, j, m, bsf, mean, std);
-                    if (lb_edcost < bsf)
+                    for(k=0;k<m;k++)
+                    {
+                        tz[k] = (t[(k+j)] - mean)/std;
+                        T_tmp[k].value = tz[k];
+                        T_tmp[k].index = k;
+                    }
+                    qsort(T_tmp, m, sizeof(Index),comp);
+
+                    global_lb = lb_sorted(T_tmp, Q_tmp,  m, bsf);
+                    if (global_lb < bsf)
                     {
 
-                        for(k=0;k<m;k++)
-                        {
-                            tz[k] = (t[(k+j)] - mean)/std;
+                        distCalc = msmDistPruned(tz,q,m,bsf);
+
+                        if( distCalc < bsf )
+                        {   /// Update bsf
+                            bsf = distCalc;
+                            loc = (it)*(EPOCH-m+1) + i-m+1;
                         }
-                        //lb_edcost = lb_edcost_h(tz, q, m, bsf);
-                        //if (lb_edcost < bsf)
-                        //{
-                            //lb_edcost = lb_kim_hierarchy(tz, q, m, bsf);
-                            distCalc = msmDistPruned(tz,q,m,bsf);
-                            if( distCalc < bsf )
-                            {   /// Update bsf
-                                bsf = distCalc;
-                                loc = (it)*(EPOCH-m+1) + i-m+1;
-                            }
-                        //} else
-                        //    edcost++;
-                    } else
-                        kim++;
+                    } else{
+                        lbsorted++;
+                    }
 
                     /// Reduce obsolute points from sum and sum square
                     ex -= t[j];
@@ -763,16 +802,13 @@ int main(  int argc , char *argv[] )
     free(u_d);
     free(l_buff);
     free(u_buff);
+    free(Q_tmp);
 
     t2 = clock();
 
-    printf("\n");
-    printf("Pruned by LB_KIM    : %6.2f%%\n", ((double) kim / i)*100);
-    printf("Pruned by LB_CostH    : %6.2f%%\n", ((double) edcost / i)*100);
-    printf("PMSM Calculation     : %6.2f%%\n", 100-(((double)edcost+kim)/i*100));
     FILE *rd = NULL;    //result data
     rd = fopen("subsequence_results.csv", "a");
-    fprintf(rd,"%s,%i,%lli,%f,%lld,%d,%f\n", "PMSMSearch with LB_CostH", m,i,bsf,loc,kim, (t2-t1)/CLOCKS_PER_SEC);
+    fprintf(rd,"%s,%i,%lli,%f,%lld,%d,%f\n", "PMSMSearch with LB_Sorted", m,i,bsf,loc,lbsorted, (t2-t1)/CLOCKS_PER_SEC);
     fclose(rd);
 
     return 0;

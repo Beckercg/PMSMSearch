@@ -146,7 +146,7 @@ double getLowerBound(int xCoord, int yCoord)
  * msmDistPruned by Jana Holznigenkemper
  */
 //double msmDistPruned(const vector<double> &X, const vector<double> &Y)
-double msmDistPruned(double *X, double *Y, int m)
+double msmDistPruned(double *X, double *Y, int m, double bsf)
 {
 
     double* upperBoundArray = calculateMsmGreedyArray(X, Y, m);
@@ -342,7 +342,7 @@ int main(  int argc , char *argv[] )
         bsf = INF;
         for (int j = 0; j < sequence_size; j++){
 
-            distance = msmDistPruned(q_file[i], s_file[j], m);
+            distance = msmDistPruned(q_file[i], s_file[j], m, bsf);
 
             if(distance < bsf)
             {
@@ -370,7 +370,7 @@ int main(  int argc , char *argv[] )
     acc = (double)tp / (double)query_size;
     FILE *rd = NULL;    //result data
     rd = fopen("results.csv", "a");
-    fprintf(rd,"%s,%s,%f,%f\n", "PrunedMSMSearch_DA",dataset,acc, (t2-t1)/CLOCKS_PER_SEC);
+    fprintf(rd,"%s,%s,%f,%f\n", "PMSMSearch_DA",dataset,acc, (t2-t1)/CLOCKS_PER_SEC);
     fclose(rd);
     return 0;
 }

@@ -122,21 +122,183 @@ int empty(struct deque *d)
     return d->size == 0;
 }
 
+/*
 /// Calculate quick lower bound
 /// Die Punkte zwischen zwei Moves die kleiner als C_COST sind haben immer mindestens Kosten von C_COST
-double lb_edcost_hierarchy(double *t, double *q, int j, int len, double bsf)
+double lb_kim_hierarchy(double *t, double *q, int len, double bsf)
 {
-    double lb;
+    double lb,d,e,f;
     lb = dist(t[(len-1)],q[len-1]);
     if (lb >= bsf)   return lb;
-    for(int l = 2; l<len; l++){
+    d = min(dist(t[(len-1)],q[len-2]),dist(t[(len-2)],q[len-1]));
+    lb += min(d,dist(t[(len-2)],q[len-2]));
+    if (lb >= bsf)   return lb;
+    d = min(dist(t[(len-3)],q[len-1]),dist(t[(len-3)],q[len-2]));
+    e = min(dist(t[(len-1)],q[len-3]),dist(t[(len-2)],q[len-3]));
+    d = min(d,dist(t[(len-3)],q[len-3]));
+    lb += min(d,e);
+    if (lb >= bsf)   return lb;
+    d = min(dist(t[(len-4)],q[len-1]),dist(t[(len-4)],q[len-2]));
+    d = min(d,dist(t[(len-4)],q[len-3]));
+    e = min(dist(t[(len-1)],q[len-4]),dist(t[(len-2)],q[len-4]));
+    e = min(e,dist(t[(len-3)],q[len-4]));
+    d = min(d,dist(t[(len-4)],q[len-4]));
+    lb += min(d,e);
+    if (lb >= bsf)   return lb;
+    d = min(dist(t[(len-5)],q[len-1]),dist(t[(len-5)],q[len-2]));
+    d = min(d,dist(t[(len-5)],q[len-3]));
+    d = min(d,dist(t[(len-5)],q[len-4]));
+    e = min(dist(t[(len-1)],q[len-5]),dist(t[(len-2)],q[len-5]));
+    e = min(e,dist(t[(len-3)],q[len-5]));
+    e = min(e,dist(t[(len-4)],q[len-5]));
+    d = min(d,dist(t[(len-5)],q[len-5]));
+    lb += min(d,e);
+    if (lb >= bsf)   return lb;
+    d = min(dist(t[(len-6)],q[len-1]),dist(t[(len-6)],q[len-2]));
+    d = min(d,dist(t[(len-6)],q[len-3]));
+    d = min(d,dist(t[(len-6)],q[len-4]));
+    d = min(d,dist(t[(len-6)],q[len-5]));
+    e = min(dist(t[(len-1)],q[len-6]),dist(t[(len-2)],q[len-6]));
+    e = min(e,dist(t[(len-3)],q[len-6]));
+    e = min(e,dist(t[(len-4)],q[len-6]));
+    e = min(e,dist(t[(len-5)],q[len-6]));
+    d = min(d,dist(t[(len-5)],q[len-5]));
+    lb += min(d,e);
+    if (lb >= bsf)   return lb;
 
-        if(dist(t[(len-l)],q[len-l]) > C_COST) {
-            lb += C_COST;
-        }else{
-            lb += dist(t[(len-l)],q[len-l]);
+    return lb;
+}
+*/
+
+/// Calculate quick lower bound
+/// Die Punkte zwischen zwei Moves die kleiner als C_COST sind haben immer mindestens Kosten von C_COST
+double lb_sakoe_tree(double *t, double *q, int j, int len, double bsf, double mean, double std)
+{
+    double lb,d,e, f,g,h,i,x,y,z;
+    double tmpt, tmpq, tmpt_nxt, tmpt_nxtnxt, tmpt_nxtnxtnxt, tmpt_nxtnxtnxtnxt, tmpt_nxtnxtnxtnxtnxt,tmpt_nxtnxtnxtnxtnxtnxt;
+    double tmpt_last = (t[len-1+j] - mean) / std;
+    double tmpq_last = q[(len-1)];
+    int skip;
+    lb = dist(tmpt_last,tmpq_last);
+    if (lb >= bsf)   return lb;
+    for(int ij = 2; ij<len-7; ij++){
+        skip=0;
+        tmpt = (t[len-ij+j] - mean) / std;
+        tmpq = q[(len-ij)];
+        z = min(dist(tmpt_last,tmpq),dist(tmpt,tmpq_last));
+        z = min(z+C_COST,dist(tmpt,tmpq));
+        if(2*C_COST<z){
+            skip++;
+            tmpt_nxt = (t[len-ij-1+j] - mean) / std;
+            x = min(dist(tmpt_nxt,tmpq_last)+C_COST,dist(tmpt_nxt,tmpq));
+            y = min(dist(q[(len-ij-1)],tmpt_last)+C_COST,dist(q[(len-ij-1)],tmpt));
+            z = min(y,x);
+            z = min(z+C_COST,dist(tmpt_nxt,q[(len-ij-1)]));
+            if(3*C_COST<z){
+                skip++;
+                tmpt_nxtnxt = (t[len-ij-2+j] - mean) / std;
+                x = min(dist(tmpt_nxtnxt,tmpq_last)+C_COST,dist(tmpt_nxtnxt,tmpq));
+                x = min(x+C_COST,dist(tmpt_nxtnxt,q[(len-ij-1)]));
+                y = min(dist(q[(len-ij-2)],tmpt_last)+C_COST,dist(q[(len-ij-2)],tmpt));
+                y = min(y+C_COST,dist(q[(len-ij-2)],tmpt_nxt));
+                z = min(y,x);
+                z = min(z+C_COST,dist(tmpt_nxtnxt,q[(len-ij-2)]));
+                if(4*C_COST<z) {
+                    skip++;
+                    tmpt_nxtnxtnxt = (t[len-ij-3+j] - mean) / std;
+                    x = min(dist(tmpt_nxtnxtnxt,tmpq_last)+C_COST,dist(tmpt_nxtnxtnxt,tmpq));
+                    x = min(x+C_COST,dist(tmpt_nxtnxtnxt,q[(len-ij-1)]));
+                    x = min(x+C_COST,dist(tmpt_nxtnxtnxt,q[(len-ij-2)]));
+                    y = min(dist(q[(len-ij-3)],tmpt_last)+C_COST,dist(q[(len-ij-3)],tmpt));
+                    y = min(y+C_COST,dist(q[(len-ij-3)],tmpt_nxt));
+                    y = min(y+C_COST,dist(q[(len-ij-3)],tmpt_nxtnxt));
+                    z = min(y,x);
+                    z = min(z+C_COST,dist(tmpt_nxtnxtnxt,q[(len-ij-3)]));
+                    if(5*C_COST<z) {
+                        skip++;
+                        tmpt_nxtnxtnxtnxt = (t[len-ij-4+j] - mean) / std;
+                        x = min(dist(tmpt_nxtnxtnxtnxt,tmpq_last)+C_COST,dist(tmpt_nxtnxtnxtnxt,tmpq));
+                        x = min(x+C_COST,dist(tmpt_nxtnxtnxtnxt,q[(len-ij-1)]));
+                        x = min(x+C_COST,dist(tmpt_nxtnxtnxtnxt,q[(len-ij-2)]));
+                        x = min(x+C_COST,dist(tmpt_nxtnxtnxtnxt,q[(len-ij-3)]));
+                        y = min(dist(q[(len-ij-4)],tmpt_last)+C_COST,dist(q[(len-ij-4)],tmpt));
+                        y = min(y+C_COST,dist(q[(len-ij-4)],tmpt_nxt));
+                        y = min(y+C_COST,dist(q[(len-ij-4)],tmpt_nxtnxt));
+                        y = min(y+C_COST,dist(q[(len-ij-4)],tmpt_nxtnxtnxt));
+                        z = min(y,x);
+                        z = min(z+C_COST,dist(tmpt_nxtnxtnxtnxt,q[(len-ij-4)]));
+
+                        if(6*C_COST<z) {
+                            skip++;
+                            tmpt_nxtnxtnxtnxtnxt = (t[len-ij-5+j] - mean) / std;
+                            x = min(dist(tmpt_nxtnxtnxtnxtnxt,tmpq_last)+C_COST,dist(tmpt_nxtnxtnxtnxtnxt,tmpq));
+                            x = min(x+C_COST,dist(tmpt_nxtnxtnxtnxtnxt,q[(len-ij-1)]));
+                            x = min(x+C_COST,dist(tmpt_nxtnxtnxtnxtnxt,q[(len-ij-2)]));
+                            x = min(x+C_COST,dist(tmpt_nxtnxtnxtnxtnxt,q[(len-ij-3)]));
+                            x = min(x+C_COST,dist(tmpt_nxtnxtnxtnxtnxt,q[(len-ij-4)]));
+                            y = min(dist(q[(len-ij-5)],tmpt_last)+C_COST,dist(q[(len-ij-5)],tmpt));
+                            y = min(y+C_COST,dist(q[(len-ij-5)],tmpt_nxt));
+                            y = min(y+C_COST,dist(q[(len-ij-5)],tmpt_nxtnxt));
+                            y = min(y+C_COST,dist(q[(len-ij-5)],tmpt_nxtnxtnxt));
+                            y = min(y+C_COST,dist(q[(len-ij-5)],tmpt_nxtnxtnxtnxt));
+                            z = min(y,x);
+                            z = min(z+C_COST,dist(tmpt_nxtnxtnxtnxtnxt,q[(len-ij-5)]));
+
+                            if(6*C_COST<z) {
+                                skip++;
+                                tmpt_nxtnxtnxtnxtnxtnxt = (t[len-ij-6+j] - mean) / std;
+                                x = min(dist(tmpt_nxtnxtnxtnxtnxtnxt,tmpq_last)+C_COST,dist(tmpt_nxtnxtnxtnxtnxtnxt,tmpq));
+                                x = min(x+C_COST,dist(tmpt_nxtnxtnxtnxtnxtnxt,q[(len-ij-1)]));
+                                x = min(x+C_COST,dist(tmpt_nxtnxtnxtnxtnxtnxt,q[(len-ij-2)]));
+                                x = min(x+C_COST,dist(tmpt_nxtnxtnxtnxtnxtnxt,q[(len-ij-3)]));
+                                x = min(x+C_COST,dist(tmpt_nxtnxtnxtnxtnxtnxt,q[(len-ij-4)]));
+                                x = min(x+C_COST,dist(tmpt_nxtnxtnxtnxtnxtnxt,q[(len-ij-5)]));
+                                y = min(dist(q[(len-ij-6)],tmpt_last)+C_COST,dist(q[(len-ij-5)],tmpt));
+                                y = min(y+C_COST,dist(q[(len-ij-6)],tmpt_nxt));
+                                y = min(y+C_COST,dist(q[(len-ij-6)],tmpt_nxtnxt));
+                                y = min(y+C_COST,dist(q[(len-ij-6)],tmpt_nxtnxtnxt));
+                                y = min(y+C_COST,dist(q[(len-ij-6)],tmpt_nxtnxtnxtnxt));
+                                y = min(y+C_COST,dist(q[(len-ij-6)],tmpt_nxtnxtnxtnxtnxt));
+                                z = min(y,x);
+                                z = min(z+C_COST,dist(tmpt_nxtnxtnxtnxtnxt,q[(len-ij-5)]));
+
+                                if(7*C_COST<z) return lb+7*C_COST;
+                            }
+                        }
+                    }
+                }
+
+            }
         }
+        lb += z;
         if (lb >= bsf)   return lb;
+
+        tmpt_last = (t[len-ij-skip+j] - mean) / std;
+        tmpq_last = q[(len-ij-skip)];
+        ij += skip;
+    }
+    return lb;
+}
+
+/// Calculate quick lower bound
+/// Die Punkte zwischen zwei Moves die kleiner als C_COST sind haben immer mindestens Kosten von C_COST
+double lb_kim2_hierarchy(double *t, double *q, int j, int len, double bsf, double mean, double std)
+{
+    double lb,d,e;
+    double tmpt, tmpq;
+    double tmpt_last = (t[len-1+j] - mean) / std;
+    double tmpq_last = q[(len-1)];
+    lb = dist(tmpt_last,tmpq_last);
+    if (lb >= bsf)   return lb;
+    for(int ij = 2; ij<len; ij++){
+        tmpt = (t[len-ij+j] - mean) / std;
+        tmpq = q[(len-ij)];
+        d = min(dist(tmpt_last,tmpq),dist(tmpt,tmpq_last));
+        e = min(d+C_COST,dist(tmpt,tmpq));
+        lb+= min(2*C_COST,e);
+        if (lb >= bsf)   return lb;
+        tmpt_last = tmpt;
+        tmpq_last = tmpq;
     }
     return lb;
 }
@@ -342,11 +504,9 @@ double msmDistPruned(double *X, double *Y, int m, double bsf)
             // store old entry before overwriting
             tmp = tmpArray[j];
             tmpArray[j] = min(d1, min(d2, d3));
-            /*
             if (tmpArray[j] < bsf) {
                 smaller_as_bsf = true;
             }
-*/
             // PruningExperiments strategy
             double lb = getLowerBound(i, j);
             if ((tmpArray[j] + lb) > upperBound)
@@ -371,7 +531,7 @@ double msmDistPruned(double *X, double *Y, int m, double bsf)
             }
         }
 
-        //if (!smaller_as_bsf) return INF;
+        if(!smaller_as_bsf) return INF;
         // tmpArray = this.fillWithInf(1, sc, tmpArray);
         for(k=1; k<sc; k++)    tmpArray[k]=INF;
         //fill(tmpArray.begin() + 1, tmpArray.begin() + sc, INF);
@@ -419,8 +579,8 @@ int main(  int argc , char *argv[] )
     int m=-1, r=-1;
     long long loc = 0;
     double t1,t2;
-    int edcost = 0,keogh = 0, keogh2 = 0;
-    double distCalc=0, lb_edcost=0, lb_k=0, lb_k2=0;
+    int sakoetree = 0;
+    double distCalc=0, global_lb=0, lb_k=0, lb_k2=0;
     double *buffer, *u_buff, *l_buff;
     Index *Q_tmp;
 
@@ -549,9 +709,6 @@ int main(  int argc , char *argv[] )
     for( i = 0 ; i < m ; i++ )
         q[i] = (q[i] - mean)/std;
 
-    /// Create envelop of the query: lower envelop, l, and upper envelop, u
-    //lower_upper_lemire(q, m, r, l, u);
-
     /// Sort the query one time by abs(z-norm(q[i]))
     for( i = 0; i<m; i++)
     {
@@ -647,21 +804,24 @@ int main(  int argc , char *argv[] )
                     /// the start location of the data in the current chunk
                     I = i-(m-1);
 
-                    for(k=0;k<m;k++)
+                    /// Use a constant lower bound to prune the obvious subsequence
+                    global_lb = lb_sakoe_tree(t, q, j, m, bsf, mean, std);
+                    if (global_lb < bsf)
                     {
-                        tz[k] = (t[(k+j)] - mean)/std;
-                    }
 
-                    distCalc = msmDistPruned(tz,q,m,bsf);
+                        for(k=0;k<m;k++)
+                        {
+                            tz[k] = (t[(k+j)] - mean)/std;
+                        }
+                            distCalc = msmDistPruned(tz,q,m,bsf);
+                            if( distCalc < bsf )
+                            {   /// Update bsf
+                                bsf = distCalc;
+                                loc = (it)*(EPOCH-m+1) + i-m+1;
+                            }
+                    } else
+                        sakoetree++;
 
-                    if( distCalc < bsf )
-
-                    {   /// Update bsf
-
-                        bsf = distCalc;
-                        loc = (it)*(EPOCH-m+1) + i-m+1;
-
-                    }
                     /// Reduce obsolute points from sum and sum square
                     ex -= t[j];
                     ex2 -= t[j]*t[j];
@@ -696,19 +856,13 @@ int main(  int argc , char *argv[] )
     free(u_buff);
 
     t2 = clock();
+
     printf("\n");
-
-    /// printf is just easier for formating ;)
-    printf("\n");
-    printf("Pruned by LB_EDCost    : %6.2f%%\n", ((double) edcost / i)*100);
-    //printf("Pruned by LB_Keogh  : %6.2f%%\n", ((double) keogh / i)*100);
-    //printf("Pruned by LB_Keogh2 : %6.2f%%\n", ((double) keogh2 / i)*100);
-    printf("PMSM Calculation     : %6.2f%%\n", 100-(((double)edcost+keogh+keogh2)/i*100));
-
-
+    printf("Pruned by LB_SakoeTree    : %6.2f%%\n", ((double) sakoetree / i)*100);
+    printf("PMSM Calculation     : %6.2f%%\n", 100-(((double)sakoetree)/i*100));
     FILE *rd = NULL;    //result data
     rd = fopen("subsequence_results.csv", "a");
-    fprintf(rd,"%s,%i,%lli,%f,%lld,%f\n", "PrunedMSM", m,i,bsf,loc, (t2-t1)/CLOCKS_PER_SEC);
+    fprintf(rd,"%s,%i,%lli,%f,%lld,%d,%f\n", "PMSMSearch with LB_SakoeTree", m,i,bsf,loc,kim, (t2-t1)/CLOCKS_PER_SEC);
     fclose(rd);
 
     return 0;

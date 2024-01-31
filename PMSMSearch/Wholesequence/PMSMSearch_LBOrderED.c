@@ -21,6 +21,20 @@
 
 
 
+typedef struct Index
+{   double value;
+    int    index;
+} Index;
+
+int comp(const void *a, const void* b)
+{   Index* x = (Index*)a;
+    Index* y = (Index*)b;
+    double diff = x->value - y->value;
+    if (diff > 0) return 1;
+    else if (diff < 0) return -1;
+    else return 0;
+}
+
 void error(int id)
 {
     if(id==1)
@@ -34,6 +48,175 @@ void error(int id)
     exit(1);
 }
 
+/*
+/// Calculate quick lower bound
+/// Die Punkte zwischen zwei Moves die kleiner als C_COST sind haben immer mindestens Kosten von C_COST
+double lb_sakoe_tree(double *t, double *q, int len, double bsf)
+{
+    double lb,d,e, f,g,h,i,x,y,z;
+    double tmpt = t[(len-1)];
+    double tmpq = q[(len-1)];
+    int skip;
+    lb = dist(tmpt,tmpq);
+    if (lb >= bsf)   return lb;
+    for(int ij = 8; ij<len-8; ij++){
+        x = min(dist(t[(len-ij+7)],q[len-ij]),dist(t[(len-ij+6)],q[len-ij]));
+        x = min(x,dist(t[(len-ij+5)],q[len-ij]));
+        x = min(x,dist(t[(len-ij+4)],q[len-ij]));
+        x = min(x,dist(t[(len-ij+3)],q[len-ij]));
+        x = min(x,dist(t[(len-ij+2)],q[len-ij]));
+        x = min(x,dist(t[(len-ij+1)],q[len-ij]));
+        y = min(dist(t[(len-ij+7)],q[len-ij]),dist(t[(len-ij+6)],q[len-ij]));
+        y = min(y,dist(t[(len-ij+5)],q[len-ij]));
+        y = min(y,dist(t[(len-ij+4)],q[len-ij]));
+        y = min(y,dist(t[(len-ij+3)],q[len-ij]));
+        y = min(y,dist(t[(len-ij+2)],q[len-ij]));
+        y = min(y,dist(t[(len-ij+1)],q[len-ij]));
+        z = min(y,x);
+        z = min(z,dist(t[(len-ij)],q[len-ij]));
+
+        if (dist(t[(len - ij + 7)], q[len - ij]) < dist(t[(len - ij + 6)], q[len - ij]) ||
+            dist(t[(len - ij + 7)], q[len - ij]) < dist(t[(len - ij + 6)], q[len - ij])) { return lb + z + C_COST; }
+
+        lb += z;
+        if (lb >= bsf)   return lb;
+    }
+    return lb;
+}
+*/
+/*
+/// Calculate quick lower bound
+/// Die Punkte zwischen zwei Moves die kleiner als C_COST sind haben immer mindestens Kosten von C_COST
+double lb_sakoe_tree(double *t, double *q, int len, double bsf)
+{
+    double lb, d,r,l,x,y;
+    double tmpt = t[(len-1)];
+    double tmpq = q[(len-1)];
+    int wid=1;
+    lb = dist(tmpt,tmpq);
+    if (lb >= bsf)   return lb;
+    for(int ij = 2; ij<len-8; ij++){
+        switch(wid) {
+            case 1:
+                d = dist(t[(len - ij)], q[len - ij]);
+                if (dist(t[(len - ij)], q[len - ij]) < dist(t[(len - ij + wid)], q[len - ij]) ||
+                    dist(t[(len - ij)], q[len - ij]) < dist(t[(len - ij)], q[len - ij+wid])) wid++;
+                else break;
+                d = min(dist(t[(len - ij+1)], q[len - ij]),dist(t[(len - ij)], q[len - ij+1]));
+            case 2:
+                x = min(dist(t[(len-ij+1)],q[len-ij]),dist(t[(len-ij)],q[len-ij]));
+                y = min(dist(t[(len-ij)],q[len-ij+1]),dist(t[(len-ij)],q[len-ij]));
+                d = min(y,x);
+                d = min(d,dist(t[(len-ij)],q[len-ij]));
+                if (dist(t[(len - ij+ wid-1)], q[len - ij]) < dist(t[(len - ij + wid)], q[len - ij]) ||
+                    dist(t[(len - ij)], q[len - ij+ wid-1]) < dist(t[(len - ij)], q[len - ij+wid])) wid++;
+                else break;
+            case 3:
+                x = min(dist(t[(len-ij+2)],q[len-ij]),dist(t[(len-ij+1)],q[len-ij]));
+                y = min(dist(t[(len-ij)],q[len-ij+1]),dist(t[(len-ij)],q[len-ij+2]));
+                d = min(y,x);
+                d = min(d,dist(t[(len-ij)],q[len-ij]));
+                if (dist(t[(len - ij+ wid-1)], q[len - ij]) < dist(t[(len - ij + wid)], q[len - ij]) ||
+                    dist(t[(len - ij)], q[len - ij+ wid-1]) < dist(t[(len - ij)], q[len - ij+wid])) wid++;
+                else break;
+            case 4:
+                x = min(dist(t[(len-ij+3)],q[len-ij]),dist(t[(len-ij+2)],q[len-ij]));
+                x = min(x,dist(t[(len-ij+1)],q[len-ij]));
+                y = min(dist(t[(len-ij)],q[len-ij+3]),dist(t[(len-ij)],q[len-ij+1]));
+                y = min(x,dist(t[(len-ij)],q[len-ij+1]));
+                d = min(y,x);
+                d = min(d,dist(t[(len-ij)],q[len-ij]));
+                if (dist(t[(len - ij+ wid-1)], q[len - ij]) < dist(t[(len - ij + wid)], q[len - ij]) ||
+                    dist(t[(len - ij)], q[len - ij+ wid-1]) < dist(t[(len - ij)], q[len - ij+wid])) wid++;
+                else break;
+            case 5:
+                x = min(dist(t[(len-ij+4)],q[len-ij]),dist(t[(len-ij+3)],q[len-ij]));
+                x = min(x,dist(t[(len-ij+2)],q[len-ij]));
+                x = min(x,dist(t[(len-ij+1)],q[len-ij]));
+                y = min(dist(t[(len-ij)],q[len-ij+4]),dist(t[(len-ij)],q[len-ij+3]));
+                y = min(x,dist(t[(len-ij)],q[len-ij+2]));
+                y = min(x,dist(t[(len-ij)],q[len-ij+1]));
+                d = min(y,x);
+                d = min(d,dist(t[(len-ij)],q[len-ij]));
+                if (dist(t[(len - ij+ wid-1)], q[len - ij]) < dist(t[(len - ij + wid)], q[len - ij]) ||
+                    dist(t[(len - ij)], q[len - ij+ wid-1]) < dist(t[(len - ij)], q[len - ij+wid])) wid++;
+                else break;
+            case 6:
+                x = min(dist(t[(len-ij+5)],q[len-ij]),dist(t[(len-ij+4)],q[len-ij]));
+                x = min(x,dist(t[(len-ij+3)],q[len-ij]));
+                x = min(x,dist(t[(len-ij+2)],q[len-ij]));
+                x = min(x,dist(t[(len-ij+1)],q[len-ij]));
+                y = min(dist(t[(len-ij)],q[len-ij+5]),dist(t[(len-ij)],q[len-ij+4]));
+                y = min(x,dist(t[(len-ij)],q[len-ij+3]));
+                y = min(x,dist(t[(len-ij)],q[len-ij+2]));
+                y = min(x,dist(t[(len-ij)],q[len-ij+1]));
+                d = min(y,x);
+                d = min(d,dist(t[(len-ij)],q[len-ij]));
+                if (dist(t[(len - ij+ wid-1)], q[len - ij]) < dist(t[(len - ij + wid)], q[len - ij]) ||
+                    dist(t[(len - ij)], q[len - ij+ wid-1]) < dist(t[(len - ij)], q[len - ij+wid])) wid++;
+                else break;
+            case 7:
+                x = min(dist(t[(len-ij+6)],q[len-ij]),dist(t[(len-ij+5)],q[len-ij]));
+                x = min(x,dist(t[(len-ij+4)],q[len-ij]));
+                x = min(x,dist(t[(len-ij+3)],q[len-ij]));
+                x = min(x,dist(t[(len-ij+2)],q[len-ij]));
+                x = min(x,dist(t[(len-ij+1)],q[len-ij]));
+                y = min(dist(t[(len-ij)],q[len-ij+6]),dist(t[(len-ij)],q[len-ij+5]));
+                y = min(x,dist(t[(len-ij)],q[len-ij+4]));
+                y = min(x,dist(t[(len-ij)],q[len-ij+3]));
+                y = min(x,dist(t[(len-ij)],q[len-ij+2]));
+                y = min(x,dist(t[(len-ij)],q[len-ij+1]));
+                d = min(y,x);
+                d = min(d,dist(t[(len-ij)],q[len-ij]));
+                if (dist(t[(len - ij+ wid-1)], q[len - ij]) < dist(t[(len - ij + wid)], q[len - ij]) ||
+                    dist(t[(len - ij)], q[len - ij+ wid-1]) < dist(t[(len - ij)], q[len - ij+wid])) return lb;
+                else break;
+            default: printf("a ist irgendwas\n"); break;
+        }
+        lb += d;
+        if (lb >= bsf)   return lb;
+    }
+    return lb;
+}
+*/
+double lb_sorted(Index *t, Index *q, int len, double bsf)
+{
+    double lb, d, t_check, q_check;
+    int tmp_l;
+
+    for(int l = 1; l<len; l++){
+        t_check = dist(t[l+1].value, q[l].value);
+        q_check = dist(t[l].value, q[l+1].value);
+        d = dist(t[l].value, q[l].value);
+        if (t_check < d || q_check < d) {
+            if(t_check<=q_check){
+                tmp_l=l;
+                while(dist(t[l].value, q[l].value) < t_check){
+                    t_check = dist(t[l].value, q[tmp_l].value);
+                    if(t_check>2*C_COST)t_check=2*C_COST;
+                    lb += t_check;
+                    l++;
+                }
+            }else{
+                tmp_l=l;
+                while(dist(t[l].value, q[l].value) < q_check){
+                    q_check = dist(t[tmp_l].value, q[l].value);
+                    if(q_check>2*C_COST)q_check=2*C_COST;
+                    lb += q_check;
+                    l++;
+                }
+
+            }
+        }else {
+            if(d>2*C_COST)d=2*C_COST;
+            lb += d;
+        }
+        if (lb >= bsf)   {
+            return lb;
+        }
+    }
+    return lb;
+}
 
 double* calculateMsmGreedyArray(double *X, double *Y, int m)
 {
@@ -135,7 +318,6 @@ double C(double new_point, double x, double y)
 
 double getLowerBound(int xCoord, int yCoord)
 {
-
     return fabs(xCoord - yCoord) * C_COST;
 }
 
@@ -145,8 +327,7 @@ double getLowerBound(int xCoord, int yCoord)
  * @return pair: first Double: Distance, second Double: relative amount of pruned cells
  * msmDistPruned by Jana Holznigenkemper
  */
-//double msmDistPruned(const vector<double> &X, const vector<double> &Y)
-double msmDistPruned(double *X, double *Y, int m)
+double msmDistPruned(double *X, double *Y, int m, double bsf)
 {
 
     double* upperBoundArray = calculateMsmGreedyArray(X, Y, m);
@@ -169,7 +350,6 @@ double msmDistPruned(double *X, double *Y, int m)
     int i, j, k;
     double* tmpArray = malloc((m+2) * sizeof(double));
     for(k=0; k<m+2; k++)    tmpArray[k]=INF;
-    //vector<double> tmpArray = vector<double>(m + 1, INF);
 
     // value storing the first "real value" of the array before overwriting it
     //  the first value of the first row has to be 0
@@ -180,7 +360,7 @@ double msmDistPruned(double *X, double *Y, int m)
     unsigned int ec = 1;
 
     // remember if an entry smaller than UB was found -> cannot cut
-    bool smallerFound;
+    bool smallerFound, smaller_as_bsf;
     int ecNext;
 
     // initialize first row
@@ -204,6 +384,7 @@ double msmDistPruned(double *X, double *Y, int m)
         // the upper bound (Euclidean distance = diagonal path)
         ecNext = i;
         smallerFound = false;
+        smaller_as_bsf = false;
         // column index
         for (j = start; j < end; j++)
         {
@@ -220,6 +401,9 @@ double msmDistPruned(double *X, double *Y, int m)
 
             tmpArray[j] = min(d1, min(d2, d3));
 
+            if (tmpArray[j] < bsf) {
+                smaller_as_bsf = true;
+            }
             // PruningExperiments strategy
             double lb = getLowerBound(i, j);
 
@@ -244,6 +428,7 @@ double msmDistPruned(double *X, double *Y, int m)
                 upperBound = tmpArray[j] + upperBoundArray[j] + 0.00001;
             }
         }
+        if (!smaller_as_bsf) return INF;
 
         for(k=1; k<sc; k++)    tmpArray[k]=INF;
         // set tmp to infinity since the move computation in the next row is not possible and accesses tmp
@@ -268,7 +453,8 @@ int main(  int argc , char *argv[] )
     char dataset[50];
     char querypath[200];
     char sequencepath[200];
-    double d, t1, t2, bsf, distance, bclass, acc;
+    double d, t1, t2, bsf, distance, bclass, acc, glb;
+    Index *Q_tmp, *T_tmp;
 
     //read args
     if (argc<=4)
@@ -291,6 +477,12 @@ int main(  int argc , char *argv[] )
     double** s_file = (double**)malloc(sequence_size * sizeof(double*));
     double* qclass = (double*)malloc(query_size * sizeof(double));
     double* sclass = (double*)malloc(sequence_size * sizeof(double));
+    Q_tmp = (Index *)malloc(sizeof(Index)*m);
+    if( Q_tmp == NULL )
+        error(1);
+    T_tmp = (Index *)malloc(sizeof(Index)*m);
+    if( T_tmp == NULL )
+        error(1);
 
     for (i = 0; i < query_size; i++) {
         // Allocate a memory block of size m+1 for each row
@@ -342,13 +534,32 @@ int main(  int argc , char *argv[] )
         bsf = INF;
         for (int j = 0; j < sequence_size; j++){
 
-            distance = msmDistPruned(q_file[i], s_file[j], m);
 
-            if(distance < bsf)
+            for( int k = 0; k<m; k++)
             {
-                bsf = distance;
-                bclass = sclass[j];
+                Q_tmp[k].value = q_file[i][k];
+                Q_tmp[k].index = k;
+                T_tmp[k].value = s_file[j][k];
+                T_tmp[k].index = k;
             }
+            qsort(Q_tmp, m, sizeof(Index),comp);
+            qsort(T_tmp, m, sizeof(Index),comp);
+
+            glb = lb_sorted(T_tmp, Q_tmp, m, bsf);
+            if(0 < bsf){
+                distance = msmDistPruned(q_file[i], s_file[j], m, bsf);
+                if(glb > distance){
+
+                }
+                if(distance < bsf)
+                {
+                    bsf = distance;
+                    bclass = sclass[j];
+                }
+            }else{
+                printf("wuhu");
+            }
+
         }
         if(qclass[i] == bclass)   tp++;
     }
@@ -370,7 +581,7 @@ int main(  int argc , char *argv[] )
     acc = (double)tp / (double)query_size;
     FILE *rd = NULL;    //result data
     rd = fopen("results.csv", "a");
-    fprintf(rd,"%s,%s,%f,%f\n", "PrunedMSMSearch_DA",dataset,acc, (t2-t1)/CLOCKS_PER_SEC);
+    fprintf(rd,"%s,%s,%f,%f\n", "PMSMSearch with LB_Sorted",dataset,acc, (t2-t1)/CLOCKS_PER_SEC);
     fclose(rd);
     return 0;
 }

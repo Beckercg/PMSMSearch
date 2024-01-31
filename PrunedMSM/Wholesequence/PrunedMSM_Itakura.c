@@ -145,8 +145,7 @@ double getLowerBound(int xCoord, int yCoord)
  * @return pair: first Double: Distance, second Double: relative amount of pruned cells
  * msmDistPruned by Jana Holznigenkemper
  */
-//double msmDistPruned(const vector<double> &X, const vector<double> &Y)
-double msmDistPruned(double *X, double *Y, int m)
+double msmDistPruned(double *X, double *Y, int m, int n, double slope)
 {
 
     double* upperBoundArray = calculateMsmGreedyArray(X, Y, m);
@@ -198,6 +197,8 @@ double msmDistPruned(double *X, double *Y, int m)
 
         //unsigned int end = min(i + bandwidth + 1, tmpArray.size());
         unsigned int end = min(i + bandwidth + 1, m+1);
+        double start_j = max(start, max((i*slope*n/m) , ((1/slope)*(n/m)*i-(1-slope)/slope*n)));
+        double end_j = min(end,min((1/slope)*(n/m)*i , (i*slope*n/m)+(1-slope)*n));
         double xi = ts1[i];
         // the index for the pruned end cannot be lower than the diagonal
         // All entries on the diagonal have to be equal or smaller than
@@ -205,7 +206,7 @@ double msmDistPruned(double *X, double *Y, int m)
         ecNext = i;
         smallerFound = false;
         // column index
-        for (j = start; j < end; j++)
+        for (j = start_j; j < end_j; j++)
         {
 
             double yj = ts2[j];
@@ -268,7 +269,7 @@ int main(  int argc , char *argv[] )
     char dataset[50];
     char querypath[200];
     char sequencepath[200];
-    double d, t1, t2, bsf, distance, bclass, acc;
+    double d, t1, t2, bsf, distance, bclass, acc, slope;
 
     //read args
     if (argc<=4)
@@ -286,6 +287,7 @@ int main(  int argc , char *argv[] )
     m = atol(argv[2]);
     query_size = atol(argv[3]);
     sequence_size = atol(argv[4]);
+    slope = atof(argv[5]);
 
     double** q_file = (double**)malloc(query_size * sizeof(double*));
     double** s_file = (double**)malloc(sequence_size * sizeof(double*));
@@ -342,7 +344,7 @@ int main(  int argc , char *argv[] )
         bsf = INF;
         for (int j = 0; j < sequence_size; j++){
 
-            distance = msmDistPruned(q_file[i], s_file[j], m);
+            distance = msmDistPruned(q_file[i], s_file[j], m, m, slope);
 
             if(distance < bsf)
             {
@@ -370,7 +372,7 @@ int main(  int argc , char *argv[] )
     acc = (double)tp / (double)query_size;
     FILE *rd = NULL;    //result data
     rd = fopen("results.csv", "a");
-    fprintf(rd,"%s,%s,%f,%f\n", "PrunedMSMSearch_DA",dataset,acc, (t2-t1)/CLOCKS_PER_SEC);
+    fprintf(rd,"%s %s,%s,%f,%f\n", "PrunedMSMSearch with Itakura", argv[5],dataset,acc, (t2-t1)/CLOCKS_PER_SEC);
     fclose(rd);
     return 0;
 }
