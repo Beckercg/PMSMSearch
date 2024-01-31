@@ -613,7 +613,7 @@ int main(  int argc , char *argv[] )
 
     FILE *rd = NULL;    //result data
     rd = fopen("subsequence_results.csv", "a");
-    fprintf(rd,"%s %s,%i,%lli,%f,%lld,%f\n", "PrunedMSM with with Itakura", argv[5], m,i,bsf,loc, (t2-t1)/CLOCKS_PER_SEC);
+    fprintf(rd,"%s %s,%i,%lli,%f,%lld,%f\n", "PrunedMSM with Itakura", argv[5], m,i,bsf,loc, (t2-t1)/CLOCKS_PER_SEC);
     fclose(rd);
 
     return 0;

@@ -145,8 +145,7 @@ double getLowerBound(int xCoord, int yCoord)
  * @return pair: first Double: Distance, second Double: relative amount of pruned cells
  * msmDistPruned by Jana Holznigenkemper
  */
-//double msmDistPruned(const vector<double> &X, const vector<double> &Y)
-double msmDistPruned(double *X, double *Y, int m, double bsf)
+double msmDistPruned(double *X, double *Y, int m, int n, double bsf, double slope)
 {
 
     double* upperBoundArray = calculateMsmGreedyArray(X, Y, m);
@@ -169,7 +168,6 @@ double msmDistPruned(double *X, double *Y, int m, double bsf)
     int i, j, k;
     double* tmpArray = malloc((m+2) * sizeof(double));
     for(k=0; k<m+2; k++)    tmpArray[k]=INF;
-    //vector<double> tmpArray = vector<double>(m + 1, INF);
 
     // value storing the first "real value" of the array before overwriting it
     //  the first value of the first row has to be 0
@@ -180,7 +178,7 @@ double msmDistPruned(double *X, double *Y, int m, double bsf)
     unsigned int ec = 1;
 
     // remember if an entry smaller than UB was found -> cannot cut
-    bool smallerFound;
+    bool smallerFound, smaller_as_bsf;
     int ecNext;
 
     // initialize first row
@@ -198,14 +196,17 @@ double msmDistPruned(double *X, double *Y, int m, double bsf)
 
         //unsigned int end = min(i + bandwidth + 1, tmpArray.size());
         unsigned int end = min(i + bandwidth + 1, m+1);
+        double start_j = max(start, max((i*slope*n/m) , ((1/slope)*(n/m)*i-(1-slope)/slope*n)));
+        double end_j = min(end,min((1/slope)*(n/m)*i , (i*slope*n/m)+(1-slope)*n));
         double xi = ts1[i];
         // the index for the pruned end cannot be lower than the diagonal
         // All entries on the diagonal have to be equal or smaller than
         // the upper bound (Euclidean distance = diagonal path)
         ecNext = i;
         smallerFound = false;
+        smaller_as_bsf = false;
         // column index
-        for (j = start; j < end; j++)
+        for (j = start_j; j < end_j; j++)
         {
 
             double yj = ts2[j];
@@ -220,6 +221,9 @@ double msmDistPruned(double *X, double *Y, int m, double bsf)
 
             tmpArray[j] = min(d1, min(d2, d3));
 
+            if (tmpArray[j] < bsf) {
+                smaller_as_bsf = true;
+            }
             // PruningExperiments strategy
             double lb = getLowerBound(i, j);
 
@@ -244,6 +248,7 @@ double msmDistPruned(double *X, double *Y, int m, double bsf)
                 upperBound = tmpArray[j] + upperBoundArray[j] + 0.00001;
             }
         }
+        if (!smaller_as_bsf) return INF;
 
         for(k=1; k<sc; k++)    tmpArray[k]=INF;
         // set tmp to infinity since the move computation in the next row is not possible and accesses tmp
@@ -268,7 +273,7 @@ int main(  int argc , char *argv[] )
     char dataset[50];
     char querypath[200];
     char sequencepath[200];
-    double d, t1, t2, bsf, distance, bclass, acc;
+    double d, t1, t2, bsf, distance, bclass, acc, slope;
 
     //read args
     if (argc<=4)
@@ -286,6 +291,7 @@ int main(  int argc , char *argv[] )
     m = atol(argv[2]);
     query_size = atol(argv[3]);
     sequence_size = atol(argv[4]);
+    slope = atof(argv[5]);
 
     double** q_file = (double**)malloc(query_size * sizeof(double*));
     double** s_file = (double**)malloc(sequence_size * sizeof(double*));
@@ -342,7 +348,7 @@ int main(  int argc , char *argv[] )
         bsf = INF;
         for (int j = 0; j < sequence_size; j++){
 
-            distance = msmDistPruned(q_file[i], s_file[j], m, bsf);
+            distance = msmDistPruned(q_file[i], s_file[j], m, m, bsf, slope);
 
             if(distance < bsf)
             {
@@ -370,7 +376,7 @@ int main(  int argc , char *argv[] )
     acc = (double)tp / (double)query_size;
     FILE *rd = NULL;    //result data
     rd = fopen("results.csv", "a");
-    fprintf(rd,"%s,%s,%f,%f\n", "PMSMSearch_DA",dataset,acc, (t2-t1)/CLOCKS_PER_SEC);
+    fprintf(rd,"%s %s,%s,%f,%f\n", "PMSMSearch with Itakura", argv[5],dataset,acc, (t2-t1)/CLOCKS_PER_SEC);
     fclose(rd);
     return 0;
 }

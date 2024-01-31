@@ -43,31 +43,12 @@ typedef struct Index
 } Index;
 
 
-
 /// Sorting function for the query, sort by abs(z_norm(q[i])) from high to low
 int comp(const void *a, const void* b)
 {   Index* x = (Index*)a;
     Index* y = (Index*)b;
-    double diff = x->value - y->value;
-    if (diff > 0) return 1;
-    else if (diff < 0) return -1;
-    else return 0;
+    return abs(y->value) - abs(x->value);   // high to low
 }
-
-
-double lb_sorted(Index *t, Index *q, int len, double bsf)
-{
-    double lb, d, t_check, q_check;
-    int tmp_l;
-    for(int l = 1; l<len; l++){
-        lb += min(dist(t[l].value, q[l].value),2*C_COST);
-        if (lb >= bsf)   {
-            return lb;
-        }
-    }
-    return lb;
-}
-
 
 
 //vector<double> calculateMsmGreedyArray(const vector<double> &X, const vector<double> &Y)
@@ -187,7 +168,7 @@ double getLowerBound(int xCoord, int yCoord)
  * msmDistPruned by Jana Holznigenkemper
  */
 //double msmDistPruned(const vector<double> &X, const vector<double> &Y)
-double msmDistPruned(double *X, double *Y, int m, double bsf)
+double msmDistPruned(double *X, double *Y, int m, double bsf, double sakoe_bandwidth)
 {
 
     // const vector<double>::size_type m = X.size();
@@ -242,6 +223,7 @@ double msmDistPruned(double *X, double *Y, int m, double bsf)
 
         // compute bandwidth regarding the upper bound
         unsigned int bandwidth = computeBandwidth(upperBound);
+        if (sakoe_bandwidth < bandwidth) bandwidth = sakoe_bandwidth;
         unsigned int start = (bandwidth > i) ? sc : max(sc, i - bandwidth);
 
         //unsigned int end = min(i + bandwidth + 1, tmpArray.size());
@@ -298,7 +280,7 @@ double msmDistPruned(double *X, double *Y, int m, double bsf)
             }
         }
 
-        if(!smaller_as_bsf) return INF;
+        if (!smaller_as_bsf) return INF;
         // tmpArray = this.fillWithInf(1, sc, tmpArray);
         for(k=1; k<sc; k++)    tmpArray[k]=INF;
         //fill(tmpArray.begin() + 1, tmpArray.begin() + sc, INF);
@@ -342,14 +324,13 @@ int main(  int argc , char *argv[] )
 
     double d;
     long long i , j;
-    double ex , ex2 , mean, std;
+    double ex , ex2 , mean, std, bandwidth;
     int m=-1, r=-1;
     long long loc = 0;
     double t1,t2;
-    int lbsorted = 0;
-    double distCalc=0, global_lb=0;
+    double distCalc=0;
     double *buffer, *u_buff, *l_buff;
-    Index *Q_tmp, *T_tmp;
+    Index *Q_tmp;
 
     /// For every EPOCH points, all cummulative values, such as ex (sum), ex2 (sum square), will be restarted for reducing the floating point error.
     int EPOCH = 100000;
@@ -362,13 +343,11 @@ int main(  int argc , char *argv[] )
     if (argc>3)
         m = atol(argv[3]);
 
-    /// read warping windows
+    /// read Sakoe
     if (argc>4)
-    {   double R = atof(argv[4]);
-        if (R<=1)
-            r = floor(R*m);
-        else
-            r = floor(R);
+    {
+        bandwidth = atol(argv[5]);
+        bandwidth = ((double)bandwidth/100.0)*m;
     }
 
     fp = fopen(argv[1],"r");
@@ -403,9 +382,6 @@ int main(  int argc , char *argv[] )
 
     Q_tmp = (Index *)malloc(sizeof(Index)*m);
     if( Q_tmp == NULL )
-        error(1);
-    T_tmp = (Index *)malloc(sizeof(Index)*m);
-    if( T_tmp == NULL )
         error(1);
 
     u = (double *)malloc(sizeof(double)*m);
@@ -456,6 +432,7 @@ int main(  int argc , char *argv[] )
     if( l_buff == NULL )
         error(1);
 
+
     /// Read query file
     bsf = INF;
     i = 0;
@@ -478,6 +455,9 @@ int main(  int argc , char *argv[] )
     for( i = 0 ; i < m ; i++ )
         q[i] = (q[i] - mean)/std;
 
+    /// Create envelop of the query: lower envelop, l, and upper envelop, u
+    //lower_upper_lemire(q, m, r, l, u);
+
     /// Sort the query one time by abs(z-norm(q[i]))
     for( i = 0; i<m; i++)
     {
@@ -494,6 +474,7 @@ int main(  int argc , char *argv[] )
         uo[i] = u[o];
         lo[i] = l[o];
     }
+    free(Q_tmp);
 
     /// Initial the cummulative lower bound
     for( i=0; i<m; i++)
@@ -501,6 +482,7 @@ int main(  int argc , char *argv[] )
         cb1[i]=0;
         cb2[i]=0;
     }
+
     i = 0;          /// current index of the data in current chunk of size EPOCH
     j = 0;          /// the starting index of the data in the circular array, t
     ex = ex2 = 0;
@@ -571,28 +553,19 @@ int main(  int argc , char *argv[] )
                     /// the start location of the data in the current chunk
                     I = i-(m-1);
 
-                    /// Use a constant lower bound to prune the obvious subsequence
                     for(k=0;k<m;k++)
                     {
                         tz[k] = (t[(k+j)] - mean)/std;
-                        T_tmp[k].value = tz[k];
-                        T_tmp[k].index = k;
                     }
-                    qsort(T_tmp, m, sizeof(Index),comp);
+                    distCalc = msmDistPruned(tz,q,m,bsf,bandwidth);
 
-                    global_lb = lb_sorted(T_tmp, Q_tmp,  m, bsf);
-                    if (global_lb < bsf)
-                    {
+                    if( distCalc < bsf )
 
-                        distCalc = msmDistPruned(tz,q,m,bsf);
+                    {   /// Update bsf
 
-                        if( distCalc < bsf )
-                        {   /// Update bsf
-                            bsf = distCalc;
-                            loc = (it)*(EPOCH-m+1) + i-m+1;
-                        }
-                    } else{
-                        lbsorted++;
+                        bsf = distCalc;
+                        loc = (it)*(EPOCH-m+1) + i-m+1;
+
                     }
 
                     /// Reduce obsolute points from sum and sum square
@@ -627,13 +600,17 @@ int main(  int argc , char *argv[] )
     free(u_d);
     free(l_buff);
     free(u_buff);
-    free(Q_tmp);
 
     t2 = clock();
+    printf("\n");
+
+    /// printf is just easier for formating ;)
+    printf("\n");
+
 
     FILE *rd = NULL;    //result data
     rd = fopen("subsequence_results.csv", "a");
-    fprintf(rd,"%s,%i,%lli,%f,%lld,%d,%f\n", "PMSMSearch with LB_Sorted", m,i,bsf,loc, (t2-t1)/CLOCKS_PER_SEC, lbsorted);
+    fprintf(rd,"%s %s,%i,%lli,%f,%lld,%f\n", "PMSM with Sakoe", argv[5], m,i,bsf,loc, (t2-t1)/CLOCKS_PER_SEC);
     fclose(rd);
 
     return 0;

@@ -42,13 +42,6 @@ typedef struct Index
     int    index;
 } Index;
 
-/// Data structure (circular array) for finding minimum and maximum for LB_Keogh envolop
-struct deque
-{   int *dq;
-    int size,capacity;
-    int f,r;
-};
-
 
 /// Sorting function for the query, sort by abs(z_norm(q[i])) from high to low
 int comp(const void *a, const void* b)
@@ -57,89 +50,6 @@ int comp(const void *a, const void* b)
     return abs(y->value) - abs(x->value);   // high to low
 }
 
-/// Initial the queue at the begining step of envelop calculation
-void init(struct deque *d, int capacity)
-{
-    d->capacity = capacity;
-    d->size = 0;
-    d->dq = (int *) malloc(sizeof(int)*d->capacity);
-    d->f = 0;
-    d->r = d->capacity-1;
-}
-
-/// Destroy the queue
-void destroy(struct deque *d)
-{
-    free(d->dq);
-}
-
-/// Insert to the queue at the back
-void push_back(struct deque *d, int v)
-{
-    d->dq[d->r] = v;
-    d->r--;
-    if (d->r < 0)
-        d->r = d->capacity-1;
-    d->size++;
-}
-
-/// Delete the current (front) element from queue
-void pop_front(struct deque *d)
-{
-    d->f--;
-    if (d->f < 0)
-        d->f = d->capacity-1;
-    d->size--;
-}
-
-/// Delete the last element from queue
-void pop_back(struct deque *d)
-{
-    d->r = (d->r+1)%d->capacity;
-    d->size--;
-}
-
-/// Get the value at the current position of the circular queue
-int front(struct deque *d)
-{
-    int aux = d->f - 1;
-
-    if (aux < 0)
-        aux = d->capacity-1;
-    return d->dq[aux];
-}
-
-/// Get the value at the last position of the circular queueint back(struct deque *d)
-int back(struct deque *d)
-{
-    int aux = (d->r+1)%d->capacity;
-    return d->dq[aux];
-}
-
-/// Check whether or not the queue is empty
-int empty(struct deque *d)
-{
-    return d->size == 0;
-}
-
-/// Calculate quick lower bound
-/// Die Punkte zwischen zwei Moves die kleiner als C_COST sind haben immer mindestens Kosten von C_COST
-double lb_edcost_hierarchy(double *t, double *q, int j, int len, double bsf)
-{
-    double lb;
-    lb = dist(t[(len-1)],q[len-1]);
-    if (lb >= bsf)   return lb;
-    for(int l = 2; l<len; l++){
-
-        if(dist(t[(len-l)],q[len-l]) > C_COST) {
-            lb += C_COST;
-        }else{
-            lb += dist(t[(len-l)],q[len-l]);
-        }
-        if (lb >= bsf)   return lb;
-    }
-    return lb;
-}
 
 //vector<double> calculateMsmGreedyArray(const vector<double> &X, const vector<double> &Y)
 double *calculateMsmGreedyArray(double *X, double *Y, int m)
@@ -417,8 +327,7 @@ int main(  int argc , char *argv[] )
     int m=-1, r=-1;
     long long loc = 0;
     double t1,t2;
-    int edcost = 0,keogh = 0, keogh2 = 0;
-    double distCalc=0, lb_edcost=0, lb_k=0, lb_k2=0;
+    double distCalc=0;
     double *buffer, *u_buff, *l_buff;
     Index *Q_tmp;
 
@@ -698,15 +607,11 @@ int main(  int argc , char *argv[] )
 
     /// printf is just easier for formating ;)
     printf("\n");
-    printf("Pruned by LB_EDCost    : %6.2f%%\n", ((double) edcost / i)*100);
-    //printf("Pruned by LB_Keogh  : %6.2f%%\n", ((double) keogh / i)*100);
-    //printf("Pruned by LB_Keogh2 : %6.2f%%\n", ((double) keogh2 / i)*100);
-    printf("PMSM Calculation     : %6.2f%%\n", 100-(((double)edcost+keogh+keogh2)/i*100));
 
 
     FILE *rd = NULL;    //result data
     rd = fopen("subsequence_results.csv", "a");
-    fprintf(rd,"%s,%i,%lli,%f,%lld,%f\n", "PMSMSearch", m,i,bsf,loc, (t2-t1)/CLOCKS_PER_SEC);
+    fprintf(rd,"%s,%i,%lli,%f,%lld,%f\n", "PMSMSearch UB_BSF", m,i,bsf,loc, (t2-t1)/CLOCKS_PER_SEC);
     fclose(rd);
 
     return 0;
