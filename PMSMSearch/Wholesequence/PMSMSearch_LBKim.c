@@ -401,7 +401,7 @@ int main(  int argc , char *argv[] )
     acc = (double)tp / (double)query_size;
     FILE *rd = NULL;    //result data
     rd = fopen("results.csv", "a");
-    fprintf(rd,"%s,%s,%f,%f\n", "PMSMSearch with LB_CostH",dataset,acc, (t2-t1)/CLOCKS_PER_SEC);
+    fprintf(rd,"%s,%s,%f,%f\n", "PMSMSearch with LB_Kim",dataset,acc, (t2-t1)/CLOCKS_PER_SEC);
     fclose(rd);
     return 0;
 }

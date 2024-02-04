@@ -36,18 +36,6 @@
 #define C_COST 0.5 // cost for merge and split
 
 
-/// Data structure for sorting the query
-typedef struct Index
-{   double value;
-    int    index;
-} Index;
-
-/// Sorting function for the query, sort by abs(z_norm(q[i])) from high to low
-int comp(const void *a, const void* b)
-{   Index* x = (Index*)a;
-    Index* y = (Index*)b;
-    return abs(y->value) - abs(x->value);   // high to low
-}
 
 //vector<double> calculateMsmGreedyArray(const vector<double> &X, const vector<double> &Y)
 double *calculateMsmGreedyArray(double *X, double *Y, int m)
@@ -165,7 +153,7 @@ double getLowerBound(int xCoord, int yCoord)
  * msmDistPruned by Jana Holznigenkemper
  */
 //double msmDistPruned(const vector<double> &X, const vector<double> &Y)
-double msmDistPruned(double *X, double *Y, int m, double bsf)
+double msmDistPruned(double *X, double *Y, int m)
 {
 
     // const vector<double>::size_type m = X.size();
@@ -249,11 +237,6 @@ double msmDistPruned(double *X, double *Y, int m, double bsf)
             // store old entry before overwriting
             tmp = tmpArray[j];
             tmpArray[j] = min(d1, min(d2, d3));
-            /*
-            if (tmpArray[j] < bsf) {
-                smaller_as_bsf = true;
-            }
-*/
             // PruningExperiments strategy
             double lb = getLowerBound(i, j);
             if ((tmpArray[j] + lb) > upperBound)
@@ -278,7 +261,6 @@ double msmDistPruned(double *X, double *Y, int m, double bsf)
             }
         }
 
-        //if (!smaller_as_bsf) return INF;
         // tmpArray = this.fillWithInf(1, sc, tmpArray);
         for(k=1; k<sc; k++)    tmpArray[k]=INF;
         //fill(tmpArray.begin() + 1, tmpArray.begin() + sc, INF);
@@ -328,7 +310,6 @@ int main(  int argc , char *argv[] )
     double t1,t2;
     double distCalc=0;
     double *buffer, *u_buff, *l_buff;
-    Index *Q_tmp;
 
     /// For every EPOCH points, all cummulative values, such as ex (sum), ex2 (sum square), will be restarted for reducing the floating point error.
     int EPOCH = 100000;
@@ -340,7 +321,6 @@ int main(  int argc , char *argv[] )
     /// read size of the query
     if (argc>3)
         m = atol(argv[3]);
-
 
     fp = fopen(argv[1],"r");
     if( fp == NULL )
@@ -370,10 +350,6 @@ int main(  int argc , char *argv[] )
 
     order = (int *)malloc(sizeof(int)*m);
     if( order == NULL )
-        error(1);
-
-    Q_tmp = (Index *)malloc(sizeof(Index)*m);
-    if( Q_tmp == NULL )
         error(1);
 
     u = (double *)malloc(sizeof(double)*m);
@@ -447,26 +423,7 @@ int main(  int argc , char *argv[] )
     for( i = 0 ; i < m ; i++ )
         q[i] = (q[i] - mean)/std;
 
-    /// Create envelop of the query: lower envelop, l, and upper envelop, u
-    //lower_upper_lemire(q, m, r, l, u);
 
-    /// Sort the query one time by abs(z-norm(q[i]))
-    for( i = 0; i<m; i++)
-    {
-        Q_tmp[i].value = q[i];
-        Q_tmp[i].index = i;
-    }
-    qsort(Q_tmp, m, sizeof(Index),comp);
-
-    /// also create another arrays for keeping sorted envelop
-    for( i=0; i<m; i++)
-    {   int o = Q_tmp[i].index;
-        order[i] = o;
-        qo[i] = q[o];
-        uo[i] = u[o];
-        lo[i] = l[o];
-    }
-    free(Q_tmp);
 
     /// Initial the cummulative lower bound
     for( i=0; i<m; i++)
@@ -550,7 +507,7 @@ int main(  int argc , char *argv[] )
                         tz[k] = (t[(k+j)] - mean)/std;
                     }
 
-                    distCalc = msmDistPruned(tz,q,m,bsf);
+                    distCalc = msmDistPruned(tz,q,m);
 
                     if( distCalc < bsf )
 

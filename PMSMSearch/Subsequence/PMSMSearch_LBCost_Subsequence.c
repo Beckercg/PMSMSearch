@@ -36,269 +36,21 @@
 #define C_COST 0.5 // cost for merge and split
 
 
-/// Data structure for sorting the query
-typedef struct Index
-{   double value;
-    int    index;
-} Index;
 
-/// Data structure (circular array) for finding minimum and maximum for LB_Keogh envolop
-struct deque
-{   int *dq;
-    int size,capacity;
-    int f,r;
-};
-
-
-/// Sorting function for the query, sort by abs(z_norm(q[i])) from high to low
-int comp(const void *a, const void* b)
-{   Index* x = (Index*)a;
-    Index* y = (Index*)b;
-    return abs(y->value) - abs(x->value);   // high to low
-}
-
-/// Initial the queue at the begining step of envelop calculation
-void init(struct deque *d, int capacity)
-{
-    d->capacity = capacity;
-    d->size = 0;
-    d->dq = (int *) malloc(sizeof(int)*d->capacity);
-    d->f = 0;
-    d->r = d->capacity-1;
-}
-
-/// Destroy the queue
-void destroy(struct deque *d)
-{
-    free(d->dq);
-}
-
-/// Insert to the queue at the back
-void push_back(struct deque *d, int v)
-{
-    d->dq[d->r] = v;
-    d->r--;
-    if (d->r < 0)
-        d->r = d->capacity-1;
-    d->size++;
-}
-
-/// Delete the current (front) element from queue
-void pop_front(struct deque *d)
-{
-    d->f--;
-    if (d->f < 0)
-        d->f = d->capacity-1;
-    d->size--;
-}
-
-/// Delete the last element from queue
-void pop_back(struct deque *d)
-{
-    d->r = (d->r+1)%d->capacity;
-    d->size--;
-}
-
-/// Get the value at the current position of the circular queue
-int front(struct deque *d)
-{
-    int aux = d->f - 1;
-
-    if (aux < 0)
-        aux = d->capacity-1;
-    return d->dq[aux];
-}
-
-/// Get the value at the last position of the circular queueint back(struct deque *d)
-int back(struct deque *d)
-{
-    int aux = (d->r+1)%d->capacity;
-    return d->dq[aux];
-}
-
-/// Check whether or not the queue is empty
-int empty(struct deque *d)
-{
-    return d->size == 0;
-}
-
-/*
 /// Calculate quick lower bound
 /// Die Punkte zwischen zwei Moves die kleiner als C_COST sind haben immer mindestens Kosten von C_COST
-double lb_kim_hierarchy(double *t, double *q, int len, double bsf)
+double lb_cost(double *t, double *q, int len, double bsf)
 {
-    double lb,d,e,f;
+    double lb;
     lb = dist(t[(len-1)],q[len-1]);
     if (lb >= bsf)   return lb;
-    d = min(dist(t[(len-1)],q[len-2]),dist(t[(len-2)],q[len-1]));
-    lb += min(d,dist(t[(len-2)],q[len-2]));
-    if (lb >= bsf)   return lb;
-    d = min(dist(t[(len-3)],q[len-1]),dist(t[(len-3)],q[len-2]));
-    e = min(dist(t[(len-1)],q[len-3]),dist(t[(len-2)],q[len-3]));
-    d = min(d,dist(t[(len-3)],q[len-3]));
-    lb += min(d,e);
-    if (lb >= bsf)   return lb;
-    d = min(dist(t[(len-4)],q[len-1]),dist(t[(len-4)],q[len-2]));
-    d = min(d,dist(t[(len-4)],q[len-3]));
-    e = min(dist(t[(len-1)],q[len-4]),dist(t[(len-2)],q[len-4]));
-    e = min(e,dist(t[(len-3)],q[len-4]));
-    d = min(d,dist(t[(len-4)],q[len-4]));
-    lb += min(d,e);
-    if (lb >= bsf)   return lb;
-    d = min(dist(t[(len-5)],q[len-1]),dist(t[(len-5)],q[len-2]));
-    d = min(d,dist(t[(len-5)],q[len-3]));
-    d = min(d,dist(t[(len-5)],q[len-4]));
-    e = min(dist(t[(len-1)],q[len-5]),dist(t[(len-2)],q[len-5]));
-    e = min(e,dist(t[(len-3)],q[len-5]));
-    e = min(e,dist(t[(len-4)],q[len-5]));
-    d = min(d,dist(t[(len-5)],q[len-5]));
-    lb += min(d,e);
-    if (lb >= bsf)   return lb;
-    d = min(dist(t[(len-6)],q[len-1]),dist(t[(len-6)],q[len-2]));
-    d = min(d,dist(t[(len-6)],q[len-3]));
-    d = min(d,dist(t[(len-6)],q[len-4]));
-    d = min(d,dist(t[(len-6)],q[len-5]));
-    e = min(dist(t[(len-1)],q[len-6]),dist(t[(len-2)],q[len-6]));
-    e = min(e,dist(t[(len-3)],q[len-6]));
-    e = min(e,dist(t[(len-4)],q[len-6]));
-    e = min(e,dist(t[(len-5)],q[len-6]));
-    d = min(d,dist(t[(len-5)],q[len-5]));
-    lb += min(d,e);
-    if (lb >= bsf)   return lb;
-
-    return lb;
-}
-*/
-
-/// Calculate quick lower bound
-/// Die Punkte zwischen zwei Moves die kleiner als C_COST sind haben immer mindestens Kosten von C_COST
-double lb_sakoe_tree(double *t, double *q, int j, int len, double bsf, double mean, double std)
-{
-    double lb,d,e, f,g,h,i,x,y,z;
-    double tmpt, tmpq, tmpt_nxt, tmpt_nxtnxt, tmpt_nxtnxtnxt, tmpt_nxtnxtnxtnxt, tmpt_nxtnxtnxtnxtnxt,tmpt_nxtnxtnxtnxtnxtnxt;
-    double tmpt_last = (t[len-1+j] - mean) / std;
-    double tmpq_last = q[(len-1)];
-    int skip;
-    lb = dist(tmpt_last,tmpq_last);
-    if (lb >= bsf)   return lb;
-    for(int ij = 2; ij<len-7; ij++){
-        skip=0;
-        tmpt = (t[len-ij+j] - mean) / std;
-        tmpq = q[(len-ij)];
-        z = min(dist(tmpt_last,tmpq),dist(tmpt,tmpq_last));
-        z = min(z+C_COST,dist(tmpt,tmpq));
-        if(2*C_COST<z){
-            skip++;
-            tmpt_nxt = (t[len-ij-1+j] - mean) / std;
-            x = min(dist(tmpt_nxt,tmpq_last)+C_COST,dist(tmpt_nxt,tmpq));
-            y = min(dist(q[(len-ij-1)],tmpt_last)+C_COST,dist(q[(len-ij-1)],tmpt));
-            z = min(y,x);
-            z = min(z+C_COST,dist(tmpt_nxt,q[(len-ij-1)]));
-            if(3*C_COST<z){
-                skip++;
-                tmpt_nxtnxt = (t[len-ij-2+j] - mean) / std;
-                x = min(dist(tmpt_nxtnxt,tmpq_last)+C_COST,dist(tmpt_nxtnxt,tmpq));
-                x = min(x+C_COST,dist(tmpt_nxtnxt,q[(len-ij-1)]));
-                y = min(dist(q[(len-ij-2)],tmpt_last)+C_COST,dist(q[(len-ij-2)],tmpt));
-                y = min(y+C_COST,dist(q[(len-ij-2)],tmpt_nxt));
-                z = min(y,x);
-                z = min(z+C_COST,dist(tmpt_nxtnxt,q[(len-ij-2)]));
-                if(4*C_COST<z) {
-                    skip++;
-                    tmpt_nxtnxtnxt = (t[len-ij-3+j] - mean) / std;
-                    x = min(dist(tmpt_nxtnxtnxt,tmpq_last)+C_COST,dist(tmpt_nxtnxtnxt,tmpq));
-                    x = min(x+C_COST,dist(tmpt_nxtnxtnxt,q[(len-ij-1)]));
-                    x = min(x+C_COST,dist(tmpt_nxtnxtnxt,q[(len-ij-2)]));
-                    y = min(dist(q[(len-ij-3)],tmpt_last)+C_COST,dist(q[(len-ij-3)],tmpt));
-                    y = min(y+C_COST,dist(q[(len-ij-3)],tmpt_nxt));
-                    y = min(y+C_COST,dist(q[(len-ij-3)],tmpt_nxtnxt));
-                    z = min(y,x);
-                    z = min(z+C_COST,dist(tmpt_nxtnxtnxt,q[(len-ij-3)]));
-                    if(5*C_COST<z) {
-                        skip++;
-                        tmpt_nxtnxtnxtnxt = (t[len-ij-4+j] - mean) / std;
-                        x = min(dist(tmpt_nxtnxtnxtnxt,tmpq_last)+C_COST,dist(tmpt_nxtnxtnxtnxt,tmpq));
-                        x = min(x+C_COST,dist(tmpt_nxtnxtnxtnxt,q[(len-ij-1)]));
-                        x = min(x+C_COST,dist(tmpt_nxtnxtnxtnxt,q[(len-ij-2)]));
-                        x = min(x+C_COST,dist(tmpt_nxtnxtnxtnxt,q[(len-ij-3)]));
-                        y = min(dist(q[(len-ij-4)],tmpt_last)+C_COST,dist(q[(len-ij-4)],tmpt));
-                        y = min(y+C_COST,dist(q[(len-ij-4)],tmpt_nxt));
-                        y = min(y+C_COST,dist(q[(len-ij-4)],tmpt_nxtnxt));
-                        y = min(y+C_COST,dist(q[(len-ij-4)],tmpt_nxtnxtnxt));
-                        z = min(y,x);
-                        z = min(z+C_COST,dist(tmpt_nxtnxtnxtnxt,q[(len-ij-4)]));
-
-                        if(6*C_COST<z) {
-                            skip++;
-                            tmpt_nxtnxtnxtnxtnxt = (t[len-ij-5+j] - mean) / std;
-                            x = min(dist(tmpt_nxtnxtnxtnxtnxt,tmpq_last)+C_COST,dist(tmpt_nxtnxtnxtnxtnxt,tmpq));
-                            x = min(x+C_COST,dist(tmpt_nxtnxtnxtnxtnxt,q[(len-ij-1)]));
-                            x = min(x+C_COST,dist(tmpt_nxtnxtnxtnxtnxt,q[(len-ij-2)]));
-                            x = min(x+C_COST,dist(tmpt_nxtnxtnxtnxtnxt,q[(len-ij-3)]));
-                            x = min(x+C_COST,dist(tmpt_nxtnxtnxtnxtnxt,q[(len-ij-4)]));
-                            y = min(dist(q[(len-ij-5)],tmpt_last)+C_COST,dist(q[(len-ij-5)],tmpt));
-                            y = min(y+C_COST,dist(q[(len-ij-5)],tmpt_nxt));
-                            y = min(y+C_COST,dist(q[(len-ij-5)],tmpt_nxtnxt));
-                            y = min(y+C_COST,dist(q[(len-ij-5)],tmpt_nxtnxtnxt));
-                            y = min(y+C_COST,dist(q[(len-ij-5)],tmpt_nxtnxtnxtnxt));
-                            z = min(y,x);
-                            z = min(z+C_COST,dist(tmpt_nxtnxtnxtnxtnxt,q[(len-ij-5)]));
-
-                            if(6*C_COST<z) {
-                                skip++;
-                                tmpt_nxtnxtnxtnxtnxtnxt = (t[len-ij-6+j] - mean) / std;
-                                x = min(dist(tmpt_nxtnxtnxtnxtnxtnxt,tmpq_last)+C_COST,dist(tmpt_nxtnxtnxtnxtnxtnxt,tmpq));
-                                x = min(x+C_COST,dist(tmpt_nxtnxtnxtnxtnxtnxt,q[(len-ij-1)]));
-                                x = min(x+C_COST,dist(tmpt_nxtnxtnxtnxtnxtnxt,q[(len-ij-2)]));
-                                x = min(x+C_COST,dist(tmpt_nxtnxtnxtnxtnxtnxt,q[(len-ij-3)]));
-                                x = min(x+C_COST,dist(tmpt_nxtnxtnxtnxtnxtnxt,q[(len-ij-4)]));
-                                x = min(x+C_COST,dist(tmpt_nxtnxtnxtnxtnxtnxt,q[(len-ij-5)]));
-                                y = min(dist(q[(len-ij-6)],tmpt_last)+C_COST,dist(q[(len-ij-5)],tmpt));
-                                y = min(y+C_COST,dist(q[(len-ij-6)],tmpt_nxt));
-                                y = min(y+C_COST,dist(q[(len-ij-6)],tmpt_nxtnxt));
-                                y = min(y+C_COST,dist(q[(len-ij-6)],tmpt_nxtnxtnxt));
-                                y = min(y+C_COST,dist(q[(len-ij-6)],tmpt_nxtnxtnxtnxt));
-                                y = min(y+C_COST,dist(q[(len-ij-6)],tmpt_nxtnxtnxtnxtnxt));
-                                z = min(y,x);
-                                z = min(z+C_COST,dist(tmpt_nxtnxtnxtnxtnxt,q[(len-ij-5)]));
-
-                                if(7*C_COST<z) return lb+7*C_COST;
-                            }
-                        }
-                    }
-                }
-
-            }
+    for(int l = 2; l<len; l++){
+        if(dist(t[(len-l)],q[len-l]) >= C_COST) {
+            lb += C_COST;
+        }else{
+            lb += dist(t[(len-l)],q[len-l]);
         }
-        lb += z;
         if (lb >= bsf)   return lb;
-
-        tmpt_last = (t[len-ij-skip+j] - mean) / std;
-        tmpq_last = q[(len-ij-skip)];
-        ij += skip;
-    }
-    return lb;
-}
-
-/// Calculate quick lower bound
-/// Die Punkte zwischen zwei Moves die kleiner als C_COST sind haben immer mindestens Kosten von C_COST
-double lb_kim2_hierarchy(double *t, double *q, int j, int len, double bsf, double mean, double std)
-{
-    double lb,d,e;
-    double tmpt, tmpq;
-    double tmpt_last = (t[len-1+j] - mean) / std;
-    double tmpq_last = q[(len-1)];
-    lb = dist(tmpt_last,tmpq_last);
-    if (lb >= bsf)   return lb;
-    for(int ij = 2; ij<len; ij++){
-        tmpt = (t[len-ij+j] - mean) / std;
-        tmpq = q[(len-ij)];
-        d = min(dist(tmpt_last,tmpq),dist(tmpt,tmpq_last));
-        e = min(d+C_COST,dist(tmpt,tmpq));
-        lb+= min(2*C_COST,e);
-        if (lb >= bsf)   return lb;
-        tmpt_last = tmpt;
-        tmpq_last = tmpq;
     }
     return lb;
 }
@@ -409,7 +161,6 @@ double C(double new_point, double x, double y)
 
 double getLowerBound(int xCoord, int yCoord)
 {
-
     return fabs(xCoord - yCoord) * C_COST;
 }
 
@@ -575,14 +326,12 @@ int main(  int argc , char *argv[] )
 
     double d;
     long long i , j;
-    double ex , ex2 , mean, std;
-    int m=-1, r=-1;
+    double ex , ex2 , mean, std, glb = 0, distance = 0;
+    int m=-1;
     long long loc = 0;
     double t1,t2;
-    int sakoetree = 0;
-    double distCalc=0, global_lb=0, lb_k=0, lb_k2=0;
+    int lb_count = 0;
     double *buffer, *u_buff, *l_buff;
-    Index *Q_tmp;
 
     /// For every EPOCH points, all cummulative values, such as ex (sum), ex2 (sum square), will be restarted for reducing the floating point error.
     int EPOCH = 100000;
@@ -594,15 +343,6 @@ int main(  int argc , char *argv[] )
     /// read size of the query
     if (argc>3)
         m = atol(argv[3]);
-
-    /// read warping windows
-    if (argc>4)
-    {   double R = atof(argv[4]);
-        if (R<=1)
-            r = floor(R*m);
-        else
-            r = floor(R);
-    }
 
     fp = fopen(argv[1],"r");
     if( fp == NULL )
@@ -632,10 +372,6 @@ int main(  int argc , char *argv[] )
 
     order = (int *)malloc(sizeof(int)*m);
     if( order == NULL )
-        error(1);
-
-    Q_tmp = (Index *)malloc(sizeof(Index)*m);
-    if( Q_tmp == NULL )
         error(1);
 
     u = (double *)malloc(sizeof(double)*m);
@@ -709,23 +445,7 @@ int main(  int argc , char *argv[] )
     for( i = 0 ; i < m ; i++ )
         q[i] = (q[i] - mean)/std;
 
-    /// Sort the query one time by abs(z-norm(q[i]))
-    for( i = 0; i<m; i++)
-    {
-        Q_tmp[i].value = q[i];
-        Q_tmp[i].index = i;
-    }
-    qsort(Q_tmp, m, sizeof(Index),comp);
 
-    /// also create another arrays for keeping sorted envelop
-    for( i=0; i<m; i++)
-    {   int o = Q_tmp[i].index;
-        order[i] = o;
-        qo[i] = q[o];
-        uo[i] = u[o];
-        lo[i] = l[o];
-    }
-    free(Q_tmp);
 
     /// Initial the cummulative lower bound
     for( i=0; i<m; i++)
@@ -804,23 +524,22 @@ int main(  int argc , char *argv[] )
                     /// the start location of the data in the current chunk
                     I = i-(m-1);
 
-                    /// Use a constant lower bound to prune the obvious subsequence
-                    global_lb = lb_sakoe_tree(t, q, j, m, bsf, mean, std);
-                    if (global_lb < bsf)
+                    for(k=0;k<m;k++)
                     {
-
-                        for(k=0;k<m;k++)
-                        {
-                            tz[k] = (t[(k+j)] - mean)/std;
+                        tz[k] = (t[(k+j)] - mean)/std;
+                    }
+                    /// Use a constant lower bound to prune the obvious subsequence
+                    glb = lb_cost(tz, q, m, bsf);
+                    if (glb < bsf)
+                    {
+                        distance = msmDistPruned(tz,q,m,bsf);
+                        if( distance < bsf )
+                        {   /// Update bsf
+                            bsf = distance;
+                            loc = (it)*(EPOCH-m+1) + i-m+1;
                         }
-                            distCalc = msmDistPruned(tz,q,m,bsf);
-                            if( distCalc < bsf )
-                            {   /// Update bsf
-                                bsf = distCalc;
-                                loc = (it)*(EPOCH-m+1) + i-m+1;
-                            }
                     } else
-                        sakoetree++;
+                        lb_count++;
 
                     /// Reduce obsolute points from sum and sum square
                     ex -= t[j];
@@ -858,11 +577,10 @@ int main(  int argc , char *argv[] )
     t2 = clock();
 
     printf("\n");
-    printf("Pruned by LB_SakoeTree    : %6.2f%%\n", ((double) sakoetree / i)*100);
-    printf("PMSM Calculation     : %6.2f%%\n", 100-(((double)sakoetree)/i*100));
+    printf("Pruned by LB_Cost2    : %6.2f%%\n", ((double) lb_count / i)*100);
     FILE *rd = NULL;    //result data
     rd = fopen("subsequence_results.csv", "a");
-    fprintf(rd,"%s,%i,%lli,%f,%lld,%d,%f\n", "PMSMSearch with LB_SakoeTree", m,i,bsf,loc,kim, (t2-t1)/CLOCKS_PER_SEC);
+    fprintf(rd,"%s,%i,%lli,%f,%lld,%d,%f\n", "PMSMSearch with LB_Cost", m,i,bsf,loc, (t2-t1)/CLOCKS_PER_SEC, lb_count);
     fclose(rd);
 
     return 0;

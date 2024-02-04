@@ -449,7 +449,7 @@ int main(  int argc , char *argv[] )
 {
     FILE *sp;
     FILE *qp;
-    int m, query_size, sequence_size, i, j, tp = 0;
+    int m, query_size, sequence_size, i, j, tp = 0,lb_count=0;
     char dataset[50];
     char querypath[200];
     char sequencepath[200];
@@ -536,7 +536,7 @@ int main(  int argc , char *argv[] )
                     bclass = sclass[j];
                 }
             }else{
-                printf("wuhu");
+                lb_count++;
             }
 
         }
@@ -560,7 +560,7 @@ int main(  int argc , char *argv[] )
     acc = (double)tp / (double)query_size;
     FILE *rd = NULL;    //result data
     rd = fopen("results.csv", "a");
-    fprintf(rd,"%s,%s,%f,%f\n", "PMSMSearch with LB_SakoeTree",dataset,acc, (t2-t1)/CLOCKS_PER_SEC);
+    fprintf(rd,"%s,%s,%f,%f,%d\n", "PMSMSearch with LB_SakoeTree",dataset,acc, (t2-t1)/CLOCKS_PER_SEC, lb_count);
     fclose(rd);
     return 0;
 }

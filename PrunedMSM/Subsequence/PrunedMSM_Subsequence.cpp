@@ -36,19 +36,6 @@
 #define C_COST 0.5 // cost for merge and split
 
 
-/// Data structure for sorting the query
-typedef struct Index
-{   double value;
-    int    index;
-} Index;
-
-
-/// Sorting function for the query, sort by abs(z_norm(q[i])) from high to low
-int comp(const void *a, const void* b)
-{   Index* x = (Index*)a;
-    Index* y = (Index*)b;
-    return abs(y->value) - abs(x->value);   // high to low
-}
 
 vector<double> calculateMsmGreedyArray(const vector<double> &X, const vector<double> &Y)
 {

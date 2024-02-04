@@ -34,24 +34,18 @@ void error(int id)
     exit(1);
 }
 
-double lb_edcost_l(double *t, double *q, int len, double bsf)
+double lb_edcost2(double *t, double *q, int len, double bsf)
 {
     double lb;
-    int mvcount=0;
     lb = dist(t[(len-1)],q[len-1]);
     if (lb >= bsf)   return lb;
     for(int l = 2; l<len; l++){
-        if(dist(t[(len-l)],q[len-l]) >= C_COST) {
-            lb += C_COST;
-        }else{
-            mvcount++;
+        if(dist(t[(len-l)],q[len-l]) <= C_COST) {
             lb += dist(t[(len-l)],q[len-l]);
         }
-        if (lb-mvcount*C_COST >= bsf){
-            return lb;
-        }
+        if (lb >= bsf)   return lb;
     }
-    return lb-mvcount*C_COST;
+    return lb;
 }
 
 double* calculateMsmGreedyArray(double *X, double *Y, int m)
@@ -285,11 +279,11 @@ int main(  int argc , char *argv[] )
 {
     FILE *sp;
     FILE *qp;
-    int m, query_size, sequence_size, i, j, tp = 0;
+    int m, query_size, sequence_size, i, j, tp = 0, lb_count=0;
     char dataset[50];
     char querypath[200];
     char sequencepath[200];
-    double d, t1, t2, bsf, distance, bclass, acc, lb_edcost;
+    double d, t1, t2, bsf, distance, bclass, acc, glb;
 
     //read args
     if (argc<=4)
@@ -363,13 +357,15 @@ int main(  int argc , char *argv[] )
         bsf = INF;
         for (int j = 0; j < sequence_size; j++){
 
-            lb_edcost = lb_edcost_l(q_file[i], s_file[j], m, bsf);
-            if(lb_edcost < bsf){
+            glb = lb_edcost2(q_file[i], s_file[j], m, bsf);
+            if(glb < bsf){
                 if(distance < bsf)
                 {
                     bsf = distance;
                     bclass = sclass[j];
                 }
+            }else{
+                lb_count++;
             }
             distance = msmDistPruned(q_file[i], s_file[j], m, bsf);
 
@@ -394,7 +390,7 @@ int main(  int argc , char *argv[] )
     acc = (double)tp / (double)query_size;
     FILE *rd = NULL;    //result data
     rd = fopen("results.csv", "a");
-    fprintf(rd,"%s,%s,%f,%f\n", "PMSMSearch with LB_EDCostL",dataset,acc, (t2-t1)/CLOCKS_PER_SEC);
+    fprintf(rd,"%s,%s,%f,%f,%d\n", "PMSMSearch with LB_EDCost2",dataset,acc, (t2-t1)/CLOCKS_PER_SEC, lb_count);
     fclose(rd);
     return 0;
 }

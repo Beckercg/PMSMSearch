@@ -267,7 +267,7 @@ int main(  int argc , char *argv[] )
 {
     FILE *sp;
     FILE *qp;
-    int m, query_size, sequence_size, i, j, tp = 0;
+    int m, query_size, sequence_size, i, j, tp = 0, ub_count=0;
     char dataset[50];
     char querypath[200];
     char sequencepath[200];
@@ -351,6 +351,8 @@ int main(  int argc , char *argv[] )
             {
                 bsf = distance;
                 bclass = sclass[j];
+            }else{
+                ub_count++;
             }
         }
         if(qclass[i] == bclass)   tp++;
@@ -373,7 +375,7 @@ int main(  int argc , char *argv[] )
     acc = (double)tp / (double)query_size;
     FILE *rd = NULL;    //result data
     rd = fopen("results.csv", "a");
-    fprintf(rd,"%s,%s,%f,%f\n", "PMSMSearch UB_BSF",dataset,acc, (t2-t1)/CLOCKS_PER_SEC);
+    fprintf(rd,"%s,%s,%f,%f,%d\n", "PMSMSearch UB_BSF",dataset,acc, (t2-t1)/CLOCKS_PER_SEC), ub_count;
     fclose(rd);
     return 0;
 }

@@ -42,8 +42,6 @@ typedef struct Index
     int    index;
 } Index;
 
-
-
 /// Sorting function for the query, sort by abs(z_norm(q[i])) from high to low
 int comp(const void *a, const void* b)
 {   Index* x = (Index*)a;
@@ -176,7 +174,6 @@ double C(double new_point, double x, double y)
 
 double getLowerBound(int xCoord, int yCoord)
 {
-
     return fabs(xCoord - yCoord) * C_COST;
 }
 
@@ -298,7 +295,7 @@ double msmDistPruned(double *X, double *Y, int m, double bsf)
             }
         }
 
-        if(!smaller_as_bsf) return INF;
+        if (!smaller_as_bsf) return INF;
         // tmpArray = this.fillWithInf(1, sc, tmpArray);
         for(k=1; k<sc; k++)    tmpArray[k]=INF;
         //fill(tmpArray.begin() + 1, tmpArray.begin() + sc, INF);
@@ -361,15 +358,6 @@ int main(  int argc , char *argv[] )
     /// read size of the query
     if (argc>3)
         m = atol(argv[3]);
-
-    /// read warping windows
-    if (argc>4)
-    {   double R = atof(argv[4]);
-        if (R<=1)
-            r = floor(R*m);
-        else
-            r = floor(R);
-    }
 
     fp = fopen(argv[1],"r");
     if( fp == NULL )
@@ -455,6 +443,7 @@ int main(  int argc , char *argv[] )
     l_buff = (double *)malloc(sizeof(double)*EPOCH);
     if( l_buff == NULL )
         error(1);
+
 
     /// Read query file
     bsf = INF;

@@ -36,20 +36,6 @@
 #define C_COST 0.5 // cost for merge and split
 
 
-/// Data structure for sorting the query
-typedef struct Index
-{   double value;
-    int    index;
-} Index;
-
-
-/// Sorting function for the query, sort by abs(z_norm(q[i])) from high to low
-int comp(const void *a, const void* b)
-{   Index* x = (Index*)a;
-    Index* y = (Index*)b;
-    return abs(y->value) - abs(x->value);   // high to low
-}
-
 
 //vector<double> calculateMsmGreedyArray(const vector<double> &X, const vector<double> &Y)
 double *calculateMsmGreedyArray(double *X, double *Y, int m)
@@ -157,7 +143,6 @@ double C(double new_point, double x, double y)
 
 double getLowerBound(int xCoord, int yCoord)
 {
-
     return fabs(xCoord - yCoord) * C_COST;
 }
 
@@ -326,12 +311,11 @@ int main(  int argc , char *argv[] )
     double d;
     long long i , j;
     double ex , ex2 , mean, std, slope;
-    int m=-1, r=-1;
+    int m=-1;
     long long loc = 0;
     double t1,t2;
     double distCalc=0;
     double *buffer, *u_buff, *l_buff;
-    Index *Q_tmp;
 
     /// For every EPOCH points, all cummulative values, such as ex (sum), ex2 (sum square), will be restarted for reducing the floating point error.
     int EPOCH = 100000;
@@ -378,10 +362,6 @@ int main(  int argc , char *argv[] )
 
     order = (int *)malloc(sizeof(int)*m);
     if( order == NULL )
-        error(1);
-
-    Q_tmp = (Index *)malloc(sizeof(Index)*m);
-    if( Q_tmp == NULL )
         error(1);
 
     u = (double *)malloc(sizeof(double)*m);
@@ -455,26 +435,7 @@ int main(  int argc , char *argv[] )
     for( i = 0 ; i < m ; i++ )
         q[i] = (q[i] - mean)/std;
 
-    /// Create envelop of the query: lower envelop, l, and upper envelop, u
-    //lower_upper_lemire(q, m, r, l, u);
 
-    /// Sort the query one time by abs(z-norm(q[i]))
-    for( i = 0; i<m; i++)
-    {
-        Q_tmp[i].value = q[i];
-        Q_tmp[i].index = i;
-    }
-    qsort(Q_tmp, m, sizeof(Index),comp);
-
-    /// also create another arrays for keeping sorted envelop
-    for( i=0; i<m; i++)
-    {   int o = Q_tmp[i].index;
-        order[i] = o;
-        qo[i] = q[o];
-        uo[i] = u[o];
-        lo[i] = l[o];
-    }
-    free(Q_tmp);
 
     /// Initial the cummulative lower bound
     for( i=0; i<m; i++)
@@ -567,7 +528,6 @@ int main(  int argc , char *argv[] )
                         loc = (it)*(EPOCH-m+1) + i-m+1;
 
                     }
-
                     /// Reduce obsolute points from sum and sum square
                     ex -= t[j];
                     ex2 -= t[j]*t[j];
