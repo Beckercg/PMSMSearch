@@ -51,12 +51,42 @@ void error(int id)
 double lb_sorted(Index *t, Index *q, int len, double bsf)
 {
 
-    double lb, d;
+    double lb, d, t_check, q_check;
+    int tmp_l;
 
     for(int l = 1; l<len; l++){
+        t_check = dist(t[l+1].value, q[l].value);
+        q_check = dist(t[l].value, q[l+1].value);
         d = dist(t[l].value, q[l].value);
-        if(d>2*C_COST)d=2*C_COST;
-        lb += d;
+        if (t_check < d || q_check < d) {
+            if(t_check<=q_check){
+                if(t_check>2*C_COST)t_check=2*C_COST;
+                lb += t_check;
+                tmp_l=l;
+                l++;
+                while(dist(t[l].value, q[l].value) < t_check){
+                    t_check = dist(t[l].value, q[tmp_l].value);
+                    if(t_check>2*C_COST)t_check=2*C_COST;
+                    lb += t_check;
+                    l++;
+                }
+            }else{
+                if(q_check>2*C_COST)q_check=2*C_COST;
+                lb += q_check;
+                tmp_l=l;
+                l++;
+                while(dist(t[l].value, q[l].value) < q_check){
+                    q_check = dist(t[tmp_l].value, q[l].value);
+                    if(q_check>2*C_COST)q_check=2*C_COST;
+                    lb += q_check;
+                    l++;
+                }
+
+            }
+        }else {
+            if(d>2*C_COST)d=2*C_COST;
+            lb += d;
+        }
         if (lb >= bsf)   {
             return lb;
         }

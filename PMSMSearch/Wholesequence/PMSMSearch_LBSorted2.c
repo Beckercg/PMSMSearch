@@ -51,11 +51,17 @@ void error(int id)
 double lb_sorted(Index *t, Index *q, int len, double bsf)
 {
 
-    double lb, d;
+    double lb, d, tdif, qdif;
 
     for(int l = 1; l<len; l++){
         d = dist(t[l].value, q[l].value);
-        if(d>2*C_COST)d=2*C_COST;
+        if(d>2*C_COST){
+            tdif = dist(t[l].value, t[l-1].value);
+            tdif = min(tdif,dist(t[l].value, t[l+1].value));
+            qdif = dist(q[l].value, q[l-1].value);
+            qdif = min(tdif,dist(q[l].value, q[l+1].value));
+            d=2*C_COST+tdif+qdif;
+        }
         lb += d;
         if (lb >= bsf)   {
             return lb;
