@@ -280,6 +280,8 @@ int main(  int argc , char *argv[] )
     double *t, *q;       /// data array and query array
     int *order;          ///new order of the query
     double *u, *l, *qo, *uo, *lo,*tz,*cb, *cb1, *cb2,*u_d, *l_d;
+    double *time_result;       /// time result array
+    int tr_count = 0;       /// time result array
 
 
     double d;
@@ -287,7 +289,7 @@ int main(  int argc , char *argv[] )
     double ex , ex2 , mean, std;
     int m=-1;
     long long loc = 0;
-    double t1,t2;
+    double t1,t2, t3;
     double distCalc=0;
     double *buffer, *u_buff, *l_buff;
     Index *Q_tmp;
@@ -315,7 +317,9 @@ int main(  int argc , char *argv[] )
     /// start the clock
     t1 = clock();
 
-
+    time_result = (double *)malloc(sizeof(double)*50);
+    if( time_result == NULL )
+        error(1);
     /// malloc everything here
     q = (double *)malloc(sizeof(double)*m);
     if( q == NULL )
@@ -477,6 +481,9 @@ int main(  int argc , char *argv[] )
             /// Just for printing a dot for approximate a million point. Not much accurate.
             if (it%(1000000/(EPOCH-m+1))==0)
                 fprintf(stderr,".");
+                t3 = clock();
+                time_result[tr_count] = (t3-t1)/CLOCKS_PER_SEC;
+                tr_count = tr_count + 1;
 
             /// Do main task here..
             ex=0; ex2=0;
@@ -565,6 +572,12 @@ int main(  int argc , char *argv[] )
     FILE *rd = NULL;    //result data
     rd = fopen("subsequence_results.csv", "a");
     fprintf(rd,"%s,%i,%lli,%f,%lld,%f\n", "PrunedMSM", m,i,bsf,loc, (t2-t1)/CLOCKS_PER_SEC);
+    fprintf(rd,"Times for every 100000: [");
+    for (int i = 0; i < tr_count; i++){
+        fprintf(rd,"%f, ", time_result[i]);
+    }
+    fprintf(rd,"\n");
+
     fclose(rd);
 
     return 0;
