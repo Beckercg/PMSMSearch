@@ -280,8 +280,8 @@ int main(  int argc , char *argv[] )
     double *t, *q;       /// data array and query array
     int *order;          ///new order of the query
     double *u, *l, *qo, *uo, *lo,*tz,*cb, *cb1, *cb2,*u_d, *l_d;
-    double *time_result;       /// time result array
-    int tr_count = 0;       /// time result array
+    double *time_result;
+    int tr_count = 0;
 
 
     double d;
@@ -289,10 +289,9 @@ int main(  int argc , char *argv[] )
     double ex , ex2 , mean, std;
     int m=-1;
     long long loc = 0;
-    double t1,t2, t3;
+    double t1,t2,t3;
     double distCalc=0;
     double *buffer, *u_buff, *l_buff;
-    Index *Q_tmp;
 
     /// For every EPOCH points, all cummulative values, such as ex (sum), ex2 (sum square), will be restarted for reducing the floating point error.
     int EPOCH = 100000;
@@ -305,7 +304,6 @@ int main(  int argc , char *argv[] )
     if (argc>3)
         m = atol(argv[3]);
 
-
     fp = fopen(argv[1],"r");
     if( fp == NULL )
         error(2);
@@ -317,7 +315,7 @@ int main(  int argc , char *argv[] )
     /// start the clock
     t1 = clock();
 
-    time_result = (double *)malloc(sizeof(double)*50);
+    time_result = (double *)malloc(sizeof(double)*500);
     if( time_result == NULL )
         error(1);
     /// malloc everything here
@@ -336,10 +334,6 @@ int main(  int argc , char *argv[] )
 
     order = (int *)malloc(sizeof(int)*m);
     if( order == NULL )
-        error(1);
-
-    Q_tmp = (Index *)malloc(sizeof(Index)*m);
-    if( Q_tmp == NULL )
         error(1);
 
     u = (double *)malloc(sizeof(double)*m);
@@ -413,26 +407,7 @@ int main(  int argc , char *argv[] )
     for( i = 0 ; i < m ; i++ )
         q[i] = (q[i] - mean)/std;
 
-    /// Create envelop of the query: lower envelop, l, and upper envelop, u
-    //lower_upper_lemire(q, m, r, l, u);
 
-    /// Sort the query one time by abs(z-norm(q[i]))
-    for( i = 0; i<m; i++)
-    {
-        Q_tmp[i].value = q[i];
-        Q_tmp[i].index = i;
-    }
-    qsort(Q_tmp, m, sizeof(Index),comp);
-
-    /// also create another arrays for keeping sorted envelop
-    for( i=0; i<m; i++)
-    {   int o = Q_tmp[i].index;
-        order[i] = o;
-        qo[i] = q[o];
-        uo[i] = u[o];
-        lo[i] = l[o];
-    }
-    free(Q_tmp);
 
     /// Initial the cummulative lower bound
     for( i=0; i<m; i++)
@@ -440,7 +415,6 @@ int main(  int argc , char *argv[] )
         cb1[i]=0;
         cb2[i]=0;
     }
-
     i = 0;          /// current index of the data in current chunk of size EPOCH
     j = 0;          /// the starting index of the data in the circular array, t
     ex = ex2 = 0;
@@ -514,17 +488,15 @@ int main(  int argc , char *argv[] )
                     /// the start location of the data in the current chunk
                     I = i-(m-1);
 
+                    /// Use a constant lower bound to prune the obvious subsequence
                     for(k=0;k<m;k++)
                     {
                         tz[k] = (t[(k+j)] - mean)/std;
                     }
-
-                    distCalc = msmDistPruned(tz,q,m,bsf);
+                    distCalc = msmDistPruned(tz,q,m);
 
                     if( distCalc < bsf )
-
                     {   /// Update bsf
-
                         bsf = distCalc;
                         loc = (it)*(EPOCH-m+1) + i-m+1;
 
@@ -563,11 +535,6 @@ int main(  int argc , char *argv[] )
     free(u_buff);
 
     t2 = clock();
-    printf("\n");
-
-    /// printf is just easier for formating ;)
-    printf("\n");
-
 
     FILE *rd = NULL;    //result data
     rd = fopen("subsequence_results.csv", "a");
@@ -576,8 +543,7 @@ int main(  int argc , char *argv[] )
     for (int i = 0; i < tr_count; i++){
         fprintf(rd,"%f, ", time_result[i]);
     }
-    fprintf(rd,"\n");
-
+    fprintf(rd,"]\n");
     fclose(rd);
 
     return 0;
