@@ -406,7 +406,7 @@ int main(  int argc , char *argv[] )
         /// Data are read in chunk of size EPOCH.
         /// When there is nothing to read, the loop is end.
         if (ep<=m-1)
-        {   done = true;+
+        {   done = true;
         } else
         {
             /// Get time for epochs.
