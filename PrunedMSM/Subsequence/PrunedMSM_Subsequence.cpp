@@ -1,27 +1,3 @@
-/***********************************************************************/
-/************************* DISCLAIMER **********************************/
-/***********************************************************************/
-/** This UCR Suite software is copyright protected � 2012 by          **/
-/** Thanawin Rakthanmanon, Bilson Campana, Abdullah Mueen,            **/
-/** Gustavo Batista and Eamonn Keogh.                                 **/
-/**                                                                   **/
-/** Unless stated otherwise, all software is provided free of charge. **/
-/** As well, all software is provided on an "as is" basis without     **/
-/** warranty of any kind, express or implied. Under no circumstances  **/
-/** and under no legal theory, whether in tort, contract,or otherwise,**/
-/** shall Thanawin Rakthanmanon, Bilson Campana, Abdullah Mueen,      **/
-/** Gustavo Batista, or Eamonn Keogh be liable to you or to any other **/
-/** person for any indirect, special, incidental, or consequential    **/
-/** damages of any character including, without limitation, damages   **/
-/** for loss of goodwill, work stoppage, computer failure or          **/
-/** malfunction, or for any and all other damages or losses.          **/
-/**                                                                   **/
-/** If you do not agree with these terms, then you you are advised to **/
-/** not use this software.                                            **/
-/***********************************************************************/
-/***********************************************************************/
-
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
@@ -35,6 +11,10 @@
 #define INF 1e20       //Pseudo Infitinte number for this code
 #define C_COST 0.5 // cost for merge and split
 
+int mergesplit_counter = 0; // global merge and split counter
+int move_counter = 0; // global move counter
+int mil_mergesplit_counter = 0; // global merge and split counter
+int mil_move_counter = 0; // global move counter
 
 
 vector<double> calculateMsmGreedyArray(const vector<double> &X, const vector<double> &Y)
@@ -218,7 +198,21 @@ double msmDistPruned(const vector<double> &X, const vector<double> &Y)
 
             // store old entry before overwriting
             tmp = tmpArray[j];
-            tmpArray[j] = min(d1, min(d2, d3));
+            if (d1 <= min(d2, d3)){
+                move_counter++; // move
+                tmpArray[j] = d1;
+            }else{
+                mergesplit_counter++; // merge or split
+                tmpArray[j] = min(d2, d3);
+            }
+            if (move_counter == 1000000){
+                mil_move_counter++;
+                move_counter=0;
+            }
+            if (mergesplit_counter == 1000000){
+                mil_mergesplit_counter++;
+                mergesplit_counter=0;
+            }
             // PruningExperiments strategy
             double lb = getLowerBound(i, j);
             if ((tmpArray[j] + lb) > upperBound)
@@ -543,6 +537,7 @@ int main(  int argc , char *argv[] )
     for (int i = 0; i < tr_count; i++){
         fprintf(rd,"%f, ", time_result[i]);
     }
+    fprintf(rd,"[%i,%i]\n", mil_move_counter, mil_mergesplit_counter);
     fprintf(rd,"]\n");
     fclose(rd);
 
