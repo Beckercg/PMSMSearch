@@ -12,6 +12,8 @@
 
 int mergesplit_counter = 0; // global merge and split counter
 int move_counter = 0; // global move counter
+int mil_mergesplit_counter = 0; // global merge and split counter
+int mil_move_counter = 0; // global move counter
 
 double lb_kim_hierarchy(double *t, double *q, int j, int len, double bsf, double mean, double std)
 {
@@ -153,6 +155,14 @@ double msmDistPruned(double *X, double *Y, int m, double bsf)
             }else{
                 mergesplit_counter++; // merge or split
                 tmpArray[j] = min(d2, d3);
+            }
+            if (move_counter == 1000000){
+                mil_move_counter++;
+                move_counter=0;
+            }
+            if (mergesplit_counter == 1000000){
+                mil_mergesplit_counter++;
+                mergesplit_counter=0;
             }
             if (tmpArray[j] < bsf) {
                 smaller_as_bsf = true;
@@ -311,7 +321,7 @@ int main(  int argc , char *argv[] )
         } else
         {
             /// Get time for epochs.
-            if (it%(1000000/(EPOCH-m+1))==0)
+            if (it%(100000/(EPOCH-m+1))==0)
                 fprintf(stderr,".");
                 t3 = clock();
                 time_result[tr_count] = (t3-t1)/CLOCKS_PER_SEC;
@@ -348,12 +358,12 @@ int main(  int argc , char *argv[] )
                         {
                             tz[k] = (t[(k+j)] - mean)/std;
                         }
-                            distCalc = msmDistPruned(tz,q,m,bsf);
-                            if( distCalc < bsf )
-                            {   /// Update bsf
-                                bsf = distCalc;
-                                loc = (it)*(EPOCH-m+1) + i-m+1;
-                            }
+                        distCalc = msmDistPruned(tz,q,m,bsf);
+                        if( distCalc < bsf )
+                        {   /// Update bsf
+                            bsf = distCalc;
+                            loc = (it)*(EPOCH-m+1) + i-m+1;
+                        }
                     } else{
                         kim++;
                     }
@@ -384,7 +394,7 @@ int main(  int argc , char *argv[] )
         fprintf(rd,"%f, ", time_result[i]);
     }
     fprintf(rd,"]\n");
-    fprintf(rd,"[%i,%i]\n", move_counter, mergesplit_counter);
+    fprintf(rd,"[%i,%i]\n", mil_move_counter, mil_mergesplit_counter);
     fclose(rd);
 
     return 0;

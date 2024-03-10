@@ -412,7 +412,6 @@ int main(  int argc , char *argv[] )
             /// Get time for epochs.
             if (it%(100000/(EPOCH-m+1))==0)
                 fprintf(stderr,".");
-                fprintf(stderr,"[%i,%i]\n", mil_move_counter, mil_mergesplit_counter);
                 t3 = clock();
                 time_result[tr_count] = (t3-t1)/CLOCKS_PER_SEC;
                 tr_count = tr_count + 1;
