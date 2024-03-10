@@ -348,10 +348,10 @@ int main(  int argc , char *argv[] )
                         tz[k] = (t[(k+j)] - mean)/std;
                     }
                     /// Use a constant lower bound to prune the obvious subsequence
-                    global_lb = lb_cost(tz, q, m, bsf, tmpArray);
+                    global_lb = lb_cost(tz, q, m, bsf);
                     if (global_lb < bsf)
                     {
-                        distCalc = msmDistPruned(tz,q,m,bsf);
+                        distCalc = msmDistPruned(tz,q,m,bsf, tmpArray);
                         if( distCalc < bsf )
                         {   /// Update bsf
                             bsf = distCalc;

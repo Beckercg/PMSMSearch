@@ -101,7 +101,7 @@ double getLowerBound(int xCoord, int yCoord)
     return fabs(xCoord - yCoord) * C_COST;
 }
 
-double msmDistPruned(double *X, double *Y, int m, double bsf, double sakoe_bandwidth)
+double msmDistPruned(double *X, double *Y, int m, double bsf, double sakoe_bandwidth, double *tmpArray)
 {
     double* upperBoundArray = calculateMsmGreedyArray(X, Y, m);
     double* ts1 = malloc((m+2) * sizeof(double));
@@ -114,7 +114,6 @@ double msmDistPruned(double *X, double *Y, int m, double bsf, double sakoe_bandw
         ts2[i] = Y[i-1]; // Copy elements from X to ts1
     }
     int i, j, k;
-    double* tmpArray = malloc((m+2) * sizeof(double));
     for(k=0; k<m+2; k++)    tmpArray[k]=INF;
     double tmp = 0;
     unsigned int sc = 1;
@@ -177,9 +176,7 @@ double msmDistPruned(double *X, double *Y, int m, double bsf, double sakoe_bandw
     free(upperBoundArray);
     free(ts1);
     free(ts2);
-    double result = tmpArray[m];
-    free(tmpArray);
-    return result;
+    return tmpArray[m];
 }
 
 
@@ -191,6 +188,7 @@ int main(  int argc , char *argv[] )
     char dataset[50];
     char querypath[200];
     char sequencepath[200];
+    double *tmpArray;
     double d, t1, t2, bsf, distance, bclass, acc, bandwidth;
 
     //read args
@@ -212,6 +210,7 @@ int main(  int argc , char *argv[] )
     double** s_file = (double**)malloc(sequence_size * sizeof(double*));
     double* qclass = (double*)malloc(query_size * sizeof(double));
     double* sclass = (double*)malloc(sequence_size * sizeof(double));
+    tmpArray = (double*)malloc(sizeof(double)*(m+1));
     for (i = 0; i < query_size; i++) {
         // Allocate a memory block of size m+1 for each row
         q_file[i] = (double*)malloc((m+1) * sizeof(double));
@@ -258,7 +257,7 @@ int main(  int argc , char *argv[] )
     for (int i = 0; i < query_size; i++){
         bsf = INF;
         for (int j = 0; j < sequence_size; j++){
-            distance = msmDistPruned(q_file[i], s_file[j], m, bsf, bandwidth);
+            distance = msmDistPruned(q_file[i], s_file[j], m, bsf, bandwidth, tmpArray);
             if(distance < bsf)
             {
                 bsf = distance;
@@ -278,6 +277,7 @@ int main(  int argc , char *argv[] )
     free(s_file);
     free(qclass);
     free(sclass);
+    free(tmpArray);
 
     acc = (double)tp / (double)query_size;
     FILE *rd = NULL;    //result data

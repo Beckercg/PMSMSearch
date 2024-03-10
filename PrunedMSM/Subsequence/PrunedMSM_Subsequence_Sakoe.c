@@ -203,7 +203,7 @@ int main(  int argc , char *argv[] )
     /// read Sakoe
     if (argc>4)
     {
-        bandwidth = atol(argv[5]);
+        bandwidth = atol(argv[4]);
         bandwidth = ((double)bandwidth/100.0)*m;
     }
     fp = fopen(argv[1],"r");
@@ -344,7 +344,7 @@ int main(  int argc , char *argv[] )
     /// Output
     FILE *rd = NULL;
     rd = fopen("subsequence_results.csv", "a");
-    fprintf(rd,"%s %s,%i,%lli,%f,%lld,%f\n", "PrunedMSM with Sakoe", argv[5], m,i,bsf,loc, (t2-t1)/CLOCKS_PER_SEC);
+    fprintf(rd,"%s %s,%i,%lli,%f,%lld,%f\n", "PrunedMSM with Sakoe", argv[4], m,i,bsf,loc, (t2-t1)/CLOCKS_PER_SEC);
     fprintf(rd,"Times for every 100000: [");
     for (int i = 0; i < tr_count; i++){
         fprintf(rd,"%f, ", time_result[i]);

@@ -107,10 +107,6 @@ double msmDistPruned(double *X, double *Y, int m, int n, double bsf, double slop
     for (int i = 0; i < m+1; i++)
     {
         unsigned int bandwidth = computeBandwidth(upperBound);
-        unsigned int start = (bandwidth > i) ? sc : max(sc, i - bandwidth);
-        unsigned int end = min(i + bandwidth + 1, m+1);
-        unsigned int start_j = (int) max(start, max((i*slope*n/m) , ((1/slope)*(n/m)*i-(1-slope)/slope*n)));
-        unsigned int end_j = (int) min(end, min((1/slope)*(n/m)*i , (i*slope*n/m)+(1-slope)*n));
         double start1 = slope * i;
         double start2 = 1 / slope * i - (1 - slope) / slope * m;
         int start = (int)ceil( max(start1, start2));
@@ -122,7 +118,7 @@ double msmDistPruned(double *X, double *Y, int m, int n, double bsf, double slop
         ecNext = i;
         smallerFound = false;
         smaller_as_bsf = false;
-        for (j = start_j; j < end_j; j++)
+        for (j = start; j < end; j++)
         {
             double yj = Y[j];
             double d1, d2, d3;
@@ -225,8 +221,9 @@ int main(  int argc , char *argv[] )
     /// read Sakoe
     if (argc>4)
     {
-        slope = atof(argv[5]);
+        slope = atof(argv[4]);
     }
+
     fp = fopen(argv[1],"r");
     if( fp == NULL )
         error(2);
@@ -369,7 +366,7 @@ int main(  int argc , char *argv[] )
     /// Output
     FILE *rd = NULL;
     rd = fopen("subsequence_results.csv", "a");
-    fprintf(rd,"%s %s,%i,%lli,%f,%lld,%f\n", "PMSMSearch with Itakura", argv[5], m,i,bsf,loc, (t2-t1)/CLOCKS_PER_SEC);
+    fprintf(rd,"%s %s,%i,%lli,%f,%lld,%f\n", "PMSMSearch with Itakura", argv[4], m,i,bsf,loc, (t2-t1)/CLOCKS_PER_SEC);
     fprintf(rd,"Times for every 100000: [");
     for (int i = 0; i < tr_count; i++){
         fprintf(rd,"%f, ", time_result[i]);

@@ -271,7 +271,7 @@ int main(  int argc , char *argv[] )
     /// read Sakoe
     if (argc>4)
     {
-        r = atol(argv[5]);
+        r = atol(argv[4]);
         r = ((int)r/100.0)*m;
     }
     fp = fopen(argv[1],"r");
@@ -422,7 +422,7 @@ int main(  int argc , char *argv[] )
     /// Output
     FILE *rd = NULL;
     rd = fopen("subsequence_results.csv", "a");
-    fprintf(rd,"%s %s,%i,%lli,%f,%lld,%f,%d\n", "PMSMSearch with LB_SakoeTree", argv[5], m,i,bsf,loc, (t2-t1)/CLOCKS_PER_SEC, sakoetree);
+    fprintf(rd,"%s %s,%i,%lli,%f,%lld,%f,%d\n", "PMSMSearch with LB_SakoeTree", argv[4], m,i,bsf,loc, (t2-t1)/CLOCKS_PER_SEC, sakoetree);
     fprintf(rd,"Times for every 100000: [");
     for (int i = 0; i < tr_count; i++){
         fprintf(rd,"%f, ", time_result[i]);

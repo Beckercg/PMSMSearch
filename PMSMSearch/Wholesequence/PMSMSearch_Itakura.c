@@ -101,7 +101,7 @@ double getLowerBound(int xCoord, int yCoord)
     return fabs(xCoord - yCoord) * C_COST;
 }
 
-double msmDistPruned(double *X, double *Y, int m, int n, double bsf, double slope)
+double msmDistPruned(double *X, double *Y, int m, int n, double bsf, double slope, double *tmpArray)
 {
     double* upperBoundArray = calculateMsmGreedyArray(X, Y, m);
     double* ts1 = malloc((m+2) * sizeof(double));
@@ -114,7 +114,6 @@ double msmDistPruned(double *X, double *Y, int m, int n, double bsf, double slop
         ts2[i] = Y[i-1]; // Copy elements from X to ts1
     }
     int i, j, k;
-    double* tmpArray = malloc((m+2) * sizeof(double));
     for(k=0; k<m+2; k++)    tmpArray[k]=INF;
     double tmp = 0;
     unsigned int sc = 1;
@@ -124,16 +123,19 @@ double msmDistPruned(double *X, double *Y, int m, int n, double bsf, double slop
     for (i = 1; i < m+1; i++)
     {
         unsigned int bandwidth = computeBandwidth(upperBound);
-        unsigned int start = (bandwidth > i) ? sc : max(sc, i - bandwidth);
-        unsigned int end = min(i + bandwidth + 1, m+1);
-        double start_j = max(start, max((i*slope*n/m) , ((1/slope)*(n/m)*i-(1-slope)/slope*n)));
-        double end_j = min(end,min((1/slope)*(n/m)*i , (i*slope*n/m)+(1-slope)*n));
+        double start1 = slope * i;
+        double start2 = 1 / slope * i - (1 - slope) / slope * m;
+        int start = (int)ceil( max(start1, start2));
+
+        double end1 = 1 / slope * i;
+        double end2 = slope * i + (1 - slope) * m;
+        int end = (int) ceil( min(end1, end2));
         double xi = ts1[i];
         ecNext = i;
         smallerFound = false;
         smaller_as_bsf = false;
         // column index
-        for (j = start_j; j < end_j; j++)
+        for (j = start; j < end; j++)
         {
             double yj = ts2[j];
             double d1, d2, d3;
@@ -178,9 +180,7 @@ double msmDistPruned(double *X, double *Y, int m, int n, double bsf, double slop
     free(upperBoundArray);
     free(ts1);
     free(ts2);
-    double result = tmpArray[m];
-    free(tmpArray);
-    return result;
+    return tmpArray[m];
 }
 
 
@@ -192,6 +192,7 @@ int main(  int argc , char *argv[] )
     char dataset[50];
     char querypath[200];
     char sequencepath[200];
+    double *tmpArray;
     double d, t1, t2, bsf, distance, bclass, acc, slope;
     //read args
     if (argc<=5)
@@ -211,6 +212,7 @@ int main(  int argc , char *argv[] )
     double** s_file = (double**)malloc(sequence_size * sizeof(double*));
     double* qclass = (double*)malloc(query_size * sizeof(double));
     double* sclass = (double*)malloc(sequence_size * sizeof(double));
+    tmpArray = (double*)malloc(sizeof(double)*(m+1));
     for (i = 0; i < query_size; i++) {
         // Allocate a memory block of size m+1 for each row
         q_file[i] = (double*)malloc((m+1) * sizeof(double));
@@ -257,7 +259,7 @@ int main(  int argc , char *argv[] )
     for (int i = 0; i < query_size; i++){
         bsf = INF;
         for (int j = 0; j < sequence_size; j++){
-            distance = msmDistPruned(q_file[i], s_file[j], m, m, bsf, slope);
+            distance = msmDistPruned(q_file[i], s_file[j], m, m, bsf, slope, tmpArray);
             if(distance < bsf)
             {
                 bsf = distance;
@@ -277,6 +279,7 @@ int main(  int argc , char *argv[] )
     free(s_file);
     free(qclass);
     free(sclass);
+    free(tmpArray);
 
     acc = (double)tp / (double)query_size;
     FILE *rd = NULL;    //result data
