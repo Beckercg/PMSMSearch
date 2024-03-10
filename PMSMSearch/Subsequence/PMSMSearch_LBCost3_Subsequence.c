@@ -109,13 +109,11 @@ double getLowerBound(int xCoord, int yCoord)
     return fabs(xCoord - yCoord) * C_COST;
 }
 
-double msmDistPruned(double *X, double *Y, int m, double bsf)
+double msmDistPruned(double *X, double *Y, int m, double bsf, double *tmpArray)
 {
     double *upperBoundArray = calculateMsmGreedyArray(X, Y, m);
     double upperBound = upperBoundArray[0] + 0.0000001;
-    double *tmpArray;
     int i, j, k;
-    tmpArray = (double*)malloc(sizeof(double)*(m+1));
     for(k=0; k<m+1; k++)    tmpArray[k]=INF;
     double tmp = 0;
     unsigned int sc = 1;
@@ -217,6 +215,7 @@ int main(  int argc , char *argv[] )
     double *buffer;
     double t1,t2,t3;
     double *time_result;
+    double *tmpArray;
     int tr_count = 0;
     long long loc = 0;
     long long i , j;
@@ -254,6 +253,9 @@ int main(  int argc , char *argv[] )
         error(1);
     buffer = (double *)malloc(sizeof(double)*EPOCH);
     if( buffer == NULL )
+        error(1);
+    tmpArray = (double*)malloc(sizeof(double)*(m+1));
+    if( tmpArray == NULL )
         error(1);
     /// Read query file
     bsf = INF;
@@ -345,7 +347,7 @@ int main(  int argc , char *argv[] )
                     global_lb = lb_cost3(tz, q, m, bsf);
                     if (global_lb < bsf)
                     {
-                        distCalc = msmDistPruned(tz,q,m,bsf);
+                        distCalc = msmDistPruned(tz,q,m,bsf, tmpArray);
                         if( distCalc < bsf )
                         {   /// Update bsf
                             bsf = distCalc;
@@ -371,6 +373,7 @@ int main(  int argc , char *argv[] )
     free(q);
     free(tz);
     free(t);
+    free(tmpArray);
     t2 = clock();
     /// Output
     FILE *rd = NULL;

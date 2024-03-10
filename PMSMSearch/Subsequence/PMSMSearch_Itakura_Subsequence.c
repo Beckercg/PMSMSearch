@@ -93,13 +93,11 @@ double getLowerBound(int xCoord, int yCoord)
     return fabs(xCoord - yCoord) * C_COST;
 }
 
-double msmDistPruned(double *X, double *Y, int m, int n, double bsf, double slope)
+double msmDistPruned(double *X, double *Y, int m, int n, double bsf, double slope, double *tmpArray)
 {
     double *upperBoundArray = calculateMsmGreedyArray(X, Y, m);
     double upperBound = upperBoundArray[0] + 0.0000001;
-    double *tmpArray;
     int i, j, k;
-    tmpArray = (double*)malloc(sizeof(double)*(m+1));
     for(k=0; k<m+1; k++)    tmpArray[k]=INF;
     double tmp = 0;
     unsigned int sc = 1;
@@ -111,8 +109,15 @@ double msmDistPruned(double *X, double *Y, int m, int n, double bsf, double slop
         unsigned int bandwidth = computeBandwidth(upperBound);
         unsigned int start = (bandwidth > i) ? sc : max(sc, i - bandwidth);
         unsigned int end = min(i + bandwidth + 1, m+1);
-        double start_j = max(start, max((i*slope*n/m) , ((1/slope)*(n/m)*i-(1-slope)/slope*n)));
-        double end_j = min(end,min((1/slope)*(n/m)*i , (i*slope*n/m)+(1-slope)*n));
+        unsigned int start_j = (int) max(start, max((i*slope*n/m) , ((1/slope)*(n/m)*i-(1-slope)/slope*n)));
+        unsigned int end_j = (int) min(end, min((1/slope)*(n/m)*i , (i*slope*n/m)+(1-slope)*n));
+        double start1 = slope * i;
+        double start2 = 1 / slope * i - (1 - slope) / slope * m;
+        int start = (int)ceil( max(start1, start2));
+
+        double end1 = 1 / slope * i;
+        double end2 = slope * i + (1 - slope) * m;
+        int end = (int) ceil( min(end1, end2));
         double xi = X[i];
         ecNext = i;
         smallerFound = false;
@@ -203,6 +208,7 @@ int main(  int argc , char *argv[] )
     double *buffer;
     double t1,t2,t3;
     double *time_result;
+    double *tmpArray;
     int tr_count = 0;
     long long loc = 0;
     long long i , j;
@@ -244,6 +250,9 @@ int main(  int argc , char *argv[] )
         error(1);
     buffer = (double *)malloc(sizeof(double)*EPOCH);
     if( buffer == NULL )
+        error(1);
+    tmpArray = (double*)malloc(sizeof(double)*(m+1));
+    if( tmpArray == NULL )
         error(1);
     /// Read query file
     bsf = INF;
@@ -331,7 +340,7 @@ int main(  int argc , char *argv[] )
                     {
                         tz[k] = (t[(k+j)] - mean)/std;
                     }
-                    distCalc = msmDistPruned(tz,q,m,m,bsf,slope);
+                    distCalc = msmDistPruned(tz,q,m,m,bsf,slope,tmpArray);
 
                     if( distCalc < bsf )
                     {   /// Update bsf
@@ -355,6 +364,7 @@ int main(  int argc , char *argv[] )
     free(q);
     free(tz);
     free(t);
+    free(tmpArray);
     t2 = clock();
     /// Output
     FILE *rd = NULL;
