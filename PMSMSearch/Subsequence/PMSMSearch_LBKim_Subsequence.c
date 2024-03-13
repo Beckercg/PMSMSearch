@@ -15,7 +15,7 @@ int move_counter = 0; // global move counter
 int mil_mergesplit_counter = 0; // global merge and split counter
 int mil_move_counter = 0; // global move counter
 
-double lb_kim_hierarchy(double *t, double *q, int j, int len, double bsf, double mean, double std)
+double lb_kim_hierarchy(double *t, double *q, int j, int len, double bsf, double mean, double std, int r)
 {
     double lb,d,e;
     double tmpt, tmpq;
@@ -23,7 +23,7 @@ double lb_kim_hierarchy(double *t, double *q, int j, int len, double bsf, double
     double tmpq_last = q[(len-1)];
     lb = dist(tmpt_last,tmpq_last);
     if (lb >= bsf)   return lb;
-    for(int ij = 2; ij<len; ij++){
+    for(int ij = 2; ij<r; ij++){
         tmpt = (t[len-ij+j] - mean) / std;
         tmpq = q[(len-ij)];
         d = min(dist(tmpt_last,tmpq),dist(tmpt,tmpq_last));
@@ -38,11 +38,9 @@ double lb_kim_hierarchy(double *t, double *q, int j, int len, double bsf, double
 
 
 //vector<double> calculateMsmGreedyArray(const vector<double> &X, const vector<double> &Y)
-double *calculateMsmGreedyArray(double *X, double *Y, int m)
+double calculateMsmGreedyArray(double *X, double *Y, int m, double *greedyArray)
 {
     int i, k;
-    double *greedyArray;
-    greedyArray = (double*)malloc(sizeof(double)*(m+1));
     for(k=0; k<m+1; k++)    greedyArray[k]=0;
     greedyArray[m] = 0.;
     double distCurrent = fabs(X[m - 1] - Y[m - 1]);
@@ -94,7 +92,7 @@ double *calculateMsmGreedyArray(double *X, double *Y, int m)
         xTmp = xCurrent;
         yTmp = yCurrent;
     }
-    return greedyArray;
+    return *greedyArray;
 }
 
 unsigned int computeBandwidth(double upperBound)
@@ -116,9 +114,9 @@ double getLowerBound(int xCoord, int yCoord)
     return fabs(xCoord - yCoord) * C_COST;
 }
 
-double msmDistPruned(double *X, double *Y, int m, double bsf, double *tmpArray)
+double msmDistPruned(double *X, double *Y, int m, double bsf, double *tmpArray, double *upperBoundArray, bool isNotKim)
 {
-    double *upperBoundArray = calculateMsmGreedyArray(X, Y, m);
+    *upperBoundArray = calculateMsmGreedyArray(X, Y, m, upperBoundArray);
     double upperBound = upperBoundArray[0] + 0.0000001;
     int i, j, k;
     for(k=0; k<m+1; k++)    tmpArray[k]=INF;
@@ -127,7 +125,7 @@ double msmDistPruned(double *X, double *Y, int m, double bsf, double *tmpArray)
     unsigned int ec = 1;
     bool smallerFound, smaller_as_bsf;
     int ecNext;
-    for (int i = 0; i < m+1; i++)
+    for (i = 0; i < m+1; i++)
     {
         unsigned int bandwidth = computeBandwidth(upperBound);
         unsigned int start = (bandwidth > i) ? sc : max(sc, i - bandwidth);
@@ -147,10 +145,10 @@ double msmDistPruned(double *X, double *Y, int m, double bsf, double *tmpArray)
             d3 = tmpArray[j - 1] + C(yj, xi, Y[j - 1]);
             // store old entry before overwriting
             tmp = tmpArray[j];
-            if (d1 <= min(d2, d3)){
+            if (d1 <= min(d2, d3) && isNotKim){
                 move_counter++; // move
                 tmpArray[j] = d1;
-            }else{
+            }else if (isNotKim){
                 mergesplit_counter++; // merge or split
                 tmpArray[j] = min(d2, d3);
             }
@@ -222,7 +220,7 @@ int main(  int argc , char *argv[] )
     double *buffer;
     double t1,t2,t3;
     double *time_result;
-    double *tmpArray;
+    double *tmpArray, *upperBoundArray;
     int tr_count = 0;
     long long loc = 0;
     long long i , j;
@@ -237,11 +235,10 @@ int main(  int argc , char *argv[] )
     /// read args
     if (argc>3)
         m = atol(argv[3]);
-    /// read Sakoe
     if (argc>4)
     {
         r = atol(argv[4]);
-        r = ((double)r/100.0)*m;
+        r = (int)(r/100.0)*m;
     }
     fp = fopen(argv[1],"r");
     if( fp == NULL )
@@ -267,8 +264,11 @@ int main(  int argc , char *argv[] )
     buffer = (double *)malloc(sizeof(double)*EPOCH);
     if( buffer == NULL )
         error(1);
-    tmpArray = (double*)malloc(sizeof(double)*(m+1));
+    tmpArray = (double*)malloc(sizeof(double)*(m+2));
     if( tmpArray == NULL )
+        error(1);
+    upperBoundArray = (double*)malloc(sizeof(double)*(m+2));
+    if( upperBoundArray == NULL )
         error(1);
     /// Read query file
     bsf = INF;
@@ -352,15 +352,15 @@ int main(  int argc , char *argv[] )
                     /// the start location of the data in the current chunk
                     I = i-(m-1);
                     /// Use a constant lower bound to prune the obvious subsequence
-                    global_lb = lb_kim_hierarchy(t, q, j, m, bsf, mean, std);
+                    for(k=0;k<m;k++)
+                    {
+                        tz[k] = (t[(k+j)] - mean)/std;
+                    }
+                    global_lb = msmDistPruned(tz+(m-r),q+(m-r),r,bsf, tmpArray, upperBoundArray, false);
                     if (global_lb < bsf)
                     {
 
-                        for(k=0;k<m;k++)
-                        {
-                            tz[k] = (t[(k+j)] - mean)/std;
-                        }
-                        distCalc = msmDistPruned(tz,q,m,bsf, tmpArray);
+                        distCalc = msmDistPruned(tz,q,m,bsf, tmpArray, upperBoundArray, true);
                         if( distCalc < bsf )
                         {   /// Update bsf
                             bsf = distCalc;
@@ -387,6 +387,7 @@ int main(  int argc , char *argv[] )
     free(tz);
     free(t);
     free(tmpArray);
+    free(upperBoundArray);
     t2 = clock();
     /// Output
     FILE *rd = NULL;

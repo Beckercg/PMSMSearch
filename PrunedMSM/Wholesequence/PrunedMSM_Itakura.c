@@ -135,7 +135,7 @@ double msmDistPruned(double *X, double *Y, int m, int n, double slope)
         ecNext = i;
         smallerFound = false;
         // column index
-        for (j = start; j < end; j++)
+        for (j = start; j <= end; j++)
         {
             double yj = ts2[j];
             double d1, d2, d3;

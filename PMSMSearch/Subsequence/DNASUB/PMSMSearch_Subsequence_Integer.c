@@ -12,31 +12,12 @@
 
 int mergesplit_counter = 0; // global merge and split counter
 int move_counter = 0; // global move counter
-int mil_mergesplit_counter = 0; // global merge and split counter
-int mil_move_counter = 0; // global move counter
 
-
-double lb_cost(double *t, double *q, int len, double bsf)
-{
-    double lb;
-    lb = dist(t[(len-1)],q[len-1]);
-    if (lb >= bsf)   return lb;
-    for(int l = 2; l<len; l++){
-        if(dist(t[(len-l)],q[len-l]) >= C_COST) {
-            lb += C_COST;
-        }else{
-            lb += dist(t[(len-l)],q[len-l]);
-        }
-        if (lb >= bsf)   return lb;
-    }
-    return lb;
-}
-
-
-//vector<double> calculateMsmGreedyArray(const vector<double> &X, const vector<double> &Y)
-double calculateMsmGreedyArray(double *X, double *Y, int m, double *greedyArray)
+double *calculateMsmGreedyArray(double *X, double *Y, int m)
 {
     int i, k;
+    double *greedyArray;
+    greedyArray = (double*)malloc(sizeof(double)*(m+1));
     for(k=0; k<m+1; k++)    greedyArray[k]=0;
     greedyArray[m] = 0.;
     double distCurrent = fabs(X[m - 1] - Y[m - 1]);
@@ -88,7 +69,7 @@ double calculateMsmGreedyArray(double *X, double *Y, int m, double *greedyArray)
         xTmp = xCurrent;
         yTmp = yCurrent;
     }
-    return *greedyArray;
+    return greedyArray;
 }
 
 unsigned int computeBandwidth(double upperBound)
@@ -110,18 +91,20 @@ double getLowerBound(int xCoord, int yCoord)
     return fabs(xCoord - yCoord) * C_COST;
 }
 
-double msmDistPruned(double *X, double *Y, int m, double bsf, double *tmpArray, double *upperBoundArray)
+double msmDistPruned(double *X, double *Y, int m, double bsf)
 {
-    *upperBoundArray = calculateMsmGreedyArray(X, Y, m, upperBoundArray);
+    double *upperBoundArray = calculateMsmGreedyArray(X, Y, m);
     double upperBound = upperBoundArray[0] + 0.0000001;
+    double *tmpArray;
     int i, j, k;
+    tmpArray = (double*)malloc(sizeof(double)*(m+1));
     for(k=0; k<m+1; k++)    tmpArray[k]=INF;
     double tmp = 0;
     unsigned int sc = 1;
     unsigned int ec = 1;
     bool smallerFound, smaller_as_bsf;
     int ecNext;
-    for (i = 0; i < m+1; i++)
+    for (int i = 0; i < m+1; i++)
     {
         unsigned int bandwidth = computeBandwidth(upperBound);
         unsigned int start = (bandwidth > i) ? sc : max(sc, i - bandwidth);
@@ -147,14 +130,6 @@ double msmDistPruned(double *X, double *Y, int m, double bsf, double *tmpArray, 
             }else{
                 mergesplit_counter++; // merge or split
                 tmpArray[j] = min(d2, d3);
-            }
-            if (move_counter == 1000000){
-                mil_move_counter++;
-                move_counter=0;
-            }
-            if (mergesplit_counter == 1000000){
-                mil_mergesplit_counter++;
-                mergesplit_counter=0;
             }
             if (tmpArray[j] < bsf) {
                 smaller_as_bsf = true;
@@ -212,16 +187,14 @@ int main(  int argc , char *argv[] )
     double *t, *q, *tz;       /// data array and query array
     double d;
     double ex , ex2 , mean, std;
-    double distCalc=0, global_lb=0;
+    double distCalc=0;
     double *buffer;
     double t1,t2,t3;
     double *time_result;
-    double *tmpArray, *upperBoundArray;
     int tr_count = 0;
     long long loc = 0;
     long long i , j;
-    int m=-1, r=-1;
-    int lb_count = 0;
+    int m=-1;
 
     /// For every EPOCH points, all cummulative values, such as ex (sum), ex2 (sum square), will be restarted for reducing the floating point error.
     int EPOCH = 100000;
@@ -231,7 +204,6 @@ int main(  int argc , char *argv[] )
     /// read args
     if (argc>3)
         m = atol(argv[3]);
-
     fp = fopen(argv[1],"r");
     if( fp == NULL )
         error(2);
@@ -255,12 +227,6 @@ int main(  int argc , char *argv[] )
         error(1);
     buffer = (double *)malloc(sizeof(double)*EPOCH);
     if( buffer == NULL )
-        error(1);
-    tmpArray = (double*)malloc(sizeof(double)*(m+2));
-    if( tmpArray == NULL )
-        error(1);
-    upperBoundArray = (double*)malloc(sizeof(double)*(m+2));
-    if( upperBoundArray == NULL )
         error(1);
     /// Read query file
     bsf = INF;
@@ -293,7 +259,8 @@ int main(  int argc , char *argv[] )
         ep=0;
         if (it==0)
         {   for(k=0; k<m-1; k++)
-                if (fscanf(fp,"%lf",&d) != EOF)
+
+                fread(&d, sizeof(int), 1, fp)
                     buffer[k] = d;
         }
         else
@@ -315,7 +282,7 @@ int main(  int argc , char *argv[] )
         } else
         {
             /// Get time for epochs.
-            if (it%(100000/(EPOCH-m+1))==0)
+            if (it%(1000000/(EPOCH-m+1))==0)
                 fprintf(stderr,".");
                 t3 = clock();
                 time_result[tr_count] = (t3-t1)/CLOCKS_PER_SEC;
@@ -343,24 +310,17 @@ int main(  int argc , char *argv[] )
                     j = (i+1)%m;
                     /// the start location of the data in the current chunk
                     I = i-(m-1);
-
+                    /// Use a constant lower bound to prune the obvious subsequence
                     for(k=0;k<m;k++)
                     {
                         tz[k] = (t[(k+j)] - mean)/std;
                     }
-                    /// Use a constant lower bound to prune the obvious subsequence
-                    global_lb = lb_cost(tz, q, m, bsf);
-                    if (global_lb < bsf)
-                    {
-                        distCalc = msmDistPruned(tz,q,m,bsf, tmpArray, upperBoundArray);
-                        if( distCalc < bsf )
-                        {   /// Update bsf
-                            bsf = distCalc;
-                            loc = (it)*(EPOCH-m+1) + i-m+1;
-                        }
-                    } else
-                        lb_count++;
-
+                    distCalc = msmDistPruned(tz,q,m,bsf);
+                    if( distCalc < bsf )
+                    {   /// Update bsf
+                        bsf = distCalc;
+                        loc = (it)*(EPOCH-m+1) + i-m+1;
+                    }
                     /// Reduce obsolute points from sum and sum square
                     ex -= t[j];
                     ex2 -= t[j]*t[j];
@@ -378,19 +338,17 @@ int main(  int argc , char *argv[] )
     free(q);
     free(tz);
     free(t);
-    free(tmpArray);
-    free(upperBoundArray);
     t2 = clock();
     /// Output
     FILE *rd = NULL;
     rd = fopen("subsequence_results.csv", "a");
-    fprintf(rd,"%s,%i,%lli,%f,%lld,%f,%d\n", "PMSMSearch with LB_EDCost", m,i,bsf,loc, (t2-t1)/CLOCKS_PER_SEC, lb_count);
+    fprintf(rd,"%s,%i,%lli,%f,%lld,%f\n", "PMSMSearch UB_BSF", m,i,bsf,loc, (t2-t1)/CLOCKS_PER_SEC);
     fprintf(rd,"Times for every 100000: [");
     for (int i = 0; i < tr_count; i++){
         fprintf(rd,"%f, ", time_result[i]);
     }
     fprintf(rd,"]\n");
-    fprintf(rd,"[%i,%i]\n", mil_move_counter, mil_mergesplit_counter);
+    fprintf(rd,"[%i,%i]\n", move_counter, mergesplit_counter);
     fclose(rd);
 
     return 0;

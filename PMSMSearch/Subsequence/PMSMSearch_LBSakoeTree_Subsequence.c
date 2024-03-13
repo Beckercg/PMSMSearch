@@ -23,7 +23,7 @@ double lb_sakoe_tree(double *t, double *q, int len, double bsf, int maxwid)
     int wid=1;
     lb = dist(tmpt,tmpq);
     if (lb >= bsf)   return lb;
-    for(int ij = 2; ij<len-maxwid; ij++){
+    for(int ij = 2; ij<maxwid+1; ij++){
         switch(wid) {
             case 1:
                 d = dist(t[(len - ij)], q[len - ij]);
@@ -69,11 +69,9 @@ double lb_sakoe_tree(double *t, double *q, int len, double bsf, int maxwid)
 
 
 //vector<double> calculateMsmGreedyArray(const vector<double> &X, const vector<double> &Y)
-double *calculateMsmGreedyArray(double *X, double *Y, int m)
+double calculateMsmGreedyArray(double *X, double *Y, int m, double *greedyArray)
 {
     int i, k;
-    double *greedyArray;
-    greedyArray = (double*)malloc(sizeof(double)*(m+1));
     for(k=0; k<m+1; k++)    greedyArray[k]=0;
     greedyArray[m] = 0.;
     double distCurrent = fabs(X[m - 1] - Y[m - 1]);
@@ -125,7 +123,7 @@ double *calculateMsmGreedyArray(double *X, double *Y, int m)
         xTmp = xCurrent;
         yTmp = yCurrent;
     }
-    return greedyArray;
+    return *greedyArray;
 }
 
 unsigned int computeBandwidth(double upperBound)
@@ -147,9 +145,9 @@ double getLowerBound(int xCoord, int yCoord)
     return fabs(xCoord - yCoord) * C_COST;
 }
 
-double msmDistPruned(double *X, double *Y, int m, double bsf, double *tmpArray)
+double msmDistPruned(double *X, double *Y, int m, double bsf, double *tmpArray, double *upperBoundArray)
 {
-    double *upperBoundArray = calculateMsmGreedyArray(X, Y, m);
+    *upperBoundArray = calculateMsmGreedyArray(X, Y, m, upperBoundArray);
     double upperBound = upperBoundArray[0] + 0.0000001;
     int i, j, k;
     for(k=0; k<m+1; k++)    tmpArray[k]=INF;
@@ -158,7 +156,7 @@ double msmDistPruned(double *X, double *Y, int m, double bsf, double *tmpArray)
     unsigned int ec = 1;
     bool smallerFound, smaller_as_bsf;
     int ecNext;
-    for (int i = 0; i < m+1; i++)
+    for (i = 0; i < m+1; i++)
     {
         unsigned int bandwidth = computeBandwidth(upperBound);
         unsigned int start = (bandwidth > i) ? sc : max(sc, i - bandwidth);
@@ -253,7 +251,7 @@ int main(  int argc , char *argv[] )
     double *buffer;
     double t1,t2,t3;
     double *time_result;
-    double *tmpArray;
+    double *tmpArray, *upperBoundArray;
     int tr_count = 0;
     long long loc = 0;
     long long i , j;
@@ -272,7 +270,7 @@ int main(  int argc , char *argv[] )
     if (argc>4)
     {
         r = atol(argv[4]);
-        r = ((int)r/100.0)*m;
+        r = (int)(r/100.0)*m;
     }
     fp = fopen(argv[1],"r");
     if( fp == NULL )
@@ -298,8 +296,11 @@ int main(  int argc , char *argv[] )
     buffer = (double *)malloc(sizeof(double)*EPOCH);
     if( buffer == NULL )
         error(1);
-    tmpArray = (double*)malloc(sizeof(double)*(m+1));
+    tmpArray = (double*)malloc(sizeof(double)*(m+2));
     if( tmpArray == NULL )
+        error(1);
+    upperBoundArray = (double*)malloc(sizeof(double)*(m+2));
+    if( upperBoundArray == NULL )
         error(1);
     /// Read query file
     bsf = INF;
@@ -391,7 +392,7 @@ int main(  int argc , char *argv[] )
                     if (global_lb < bsf)
                     {
 
-                            distCalc = msmDistPruned(tz,q,m,bsf,tmpArray);
+                            distCalc = msmDistPruned(tz,q,m,bsf,tmpArray, upperBoundArray);
                             if( distCalc < bsf )
                             {   /// Update bsf
                                 bsf = distCalc;
@@ -418,6 +419,7 @@ int main(  int argc , char *argv[] )
     free(tz);
     free(t);
     free(tmpArray);
+    free(upperBoundArray);
     t2 = clock();
     /// Output
     FILE *rd = NULL;

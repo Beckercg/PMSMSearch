@@ -23,15 +23,15 @@ void error(int id)
     exit(1);
 }
 
-double lb_sakoe_tree(double *t, double *q, int len, double bsf)
+double lb_sakoe_tree(double *t, double *q, int len, double bsf, int maxwid)
 {
     double lb, d,r,l,x,y;
     double tmpt = t[(len-1)];
     double tmpq = q[(len-1)];
-    int wid=1, maxwid=20;
+    int wid=1;
     lb = dist(tmpt,tmpq);
     if (lb >= bsf)   return lb;
-    for(int ij = 2; ij<len-maxwid; ij++){
+    for(int ij = 2; ij<maxwid+1; ij++){
         switch(wid) {
             case 1:
                 d = dist(t[(len - ij)], q[len - ij]);
@@ -75,9 +75,8 @@ double lb_sakoe_tree(double *t, double *q, int len, double bsf)
     return lb;
 }
 
-double* calculateMsmGreedyArray(double *X, double *Y, int m)
+double calculateMsmGreedyArray(double *X, double *Y, int m, double *greedyArray)
 {
-    double* greedyArray = malloc((m+1) * sizeof(double));
     for(int i = 0; i < m+1; i++) {
         greedyArray[i] = 0;
     }
@@ -131,7 +130,7 @@ double* calculateMsmGreedyArray(double *X, double *Y, int m)
         xTmp = xCurrent;
         yTmp = yCurrent;
     }
-    return greedyArray;
+    return *greedyArray;
 }
 
 unsigned int computeBandwidth(double upperBound)
@@ -153,11 +152,9 @@ double getLowerBound(int xCoord, int yCoord)
     return fabs(xCoord - yCoord) * C_COST;
 }
 
-double msmDistPruned(double *X, double *Y, int m, double bsf, double *tmpArray)
+double msmDistPruned(double *X, double *Y, int m, double bsf, double *tmpArray, double *upperBoundArray, double *ts1, double *ts2)
 {
-    double* upperBoundArray = calculateMsmGreedyArray(X, Y, m);
-    double* ts1 = malloc((m+2) * sizeof(double));
-    double* ts2 = malloc((m+2) * sizeof(double));
+    *upperBoundArray = calculateMsmGreedyArray(X, Y, m, upperBoundArray);
     double upperBound = upperBoundArray[0] + 0.0000001;
     ts1[0] = INF;
     ts2[0] = INF;
@@ -224,9 +221,6 @@ double msmDistPruned(double *X, double *Y, int m, double bsf, double *tmpArray)
         tmp = INF;
         ec = ecNext;
     }
-    free(upperBoundArray);
-    free(ts1);
-    free(ts2);
     return tmpArray[m];
 }
 
@@ -235,11 +229,11 @@ int main(  int argc , char *argv[] )
 {
     FILE *sp;
     FILE *qp;
-    int m, query_size, sequence_size, i, j, tp = 0, lb_count=0;
+    int m, query_size, sequence_size, i, j, tp = 0, lb_count=0, r;
     char dataset[50];
     char querypath[200];
     char sequencepath[200];
-    double *tmpArray;
+    double *tmpArray, *upperBoundArray, *ts1, *ts2;
     double d, t1, t2, bsf, distance, bclass, acc, glb;
     //read args
     if (argc<=4)
@@ -249,6 +243,8 @@ int main(  int argc , char *argv[] )
     m = atol(argv[2]);
     query_size = atol(argv[3]);
     sequence_size = atol(argv[4]);
+    r = atol(argv[5]);
+    r = (int)(r/100.0)*m;
     dataset[99] = '\0'; // Ensuring null-termination
     // Construct querypath
     snprintf(querypath, sizeof(querypath), "data/%s/%s_TEST.tsv", dataset, dataset);
@@ -258,7 +254,10 @@ int main(  int argc , char *argv[] )
     double** s_file = (double**)malloc(sequence_size * sizeof(double*));
     double* qclass = (double*)malloc(query_size * sizeof(double));
     double* sclass = (double*)malloc(sequence_size * sizeof(double));
-    tmpArray = (double*)malloc(sizeof(double)*(m+1));
+    tmpArray = (double*)malloc(sizeof(double)*(m+2));
+    upperBoundArray = (double*)malloc(sizeof(double)*(m+2));
+    ts1 = malloc((m+2) * sizeof(double));
+    ts2 = malloc((m+2) * sizeof(double));
     for (i = 0; i < query_size; i++) {
         // Allocate a memory block of size m+1 for each row
         q_file[i] = (double*)malloc((m+1) * sizeof(double));
@@ -305,9 +304,9 @@ int main(  int argc , char *argv[] )
     for (int i = 0; i < query_size; i++){
         bsf = INF;
         for (int j = 0; j < sequence_size; j++){
-            glb = lb_sakoe_tree(s_file[j], q_file[i], m, bsf);
+            glb = lb_sakoe_tree(s_file[j], q_file[i], m, bsf, r);
             if(glb < bsf){
-                distance = msmDistPruned(q_file[i], s_file[j], m, bsf, tmpArray);
+                distance = msmDistPruned(q_file[i], s_file[j], m, bsf, tmpArray, upperBoundArray, ts1, ts2);
                 if(distance < bsf)
                 {
                     bsf = distance;
@@ -331,6 +330,9 @@ int main(  int argc , char *argv[] )
     free(qclass);
     free(sclass);
     free(tmpArray);
+    free(upperBoundArray);
+    free(ts1);
+    free(ts2);
 
     acc = (double)tp / (double)query_size;
     FILE *rd = NULL;    //result data

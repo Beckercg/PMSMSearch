@@ -15,11 +15,9 @@ int move_counter = 0; // global move counter
 int mil_mergesplit_counter = 0; // global merge and split counter
 int mil_move_counter = 0; // global move counter
 
-double *calculateMsmGreedyArray(double *X, double *Y, int m)
+double calculateMsmGreedyArray(double *X, double *Y, int m, double *greedyArray)
 {
     int i, k;
-    double *greedyArray;
-    greedyArray = (double*)malloc(sizeof(double)*(m+1));
     for(k=0; k<m+1; k++)    greedyArray[k]=0;
     greedyArray[m] = 0.;
     double distCurrent = fabs(X[m - 1] - Y[m - 1]);
@@ -71,7 +69,7 @@ double *calculateMsmGreedyArray(double *X, double *Y, int m)
         xTmp = xCurrent;
         yTmp = yCurrent;
     }
-    return greedyArray;
+    return *greedyArray;
 }
 
 unsigned int computeBandwidth(double upperBound)
@@ -93,9 +91,9 @@ double getLowerBound(int xCoord, int yCoord)
     return fabs(xCoord - yCoord) * C_COST;
 }
 
-double msmDistPruned(double *X, double *Y, int m, int n, double bsf, double slope, double *tmpArray)
+double msmDistPruned(double *X, double *Y, int m, int n, double bsf, double slope, double *tmpArray, double *upperBoundArray)
 {
-    double *upperBoundArray = calculateMsmGreedyArray(X, Y, m);
+    *upperBoundArray = calculateMsmGreedyArray(X, Y, m, upperBoundArray);
     double upperBound = upperBoundArray[0] + 0.0000001;
     int i, j, k;
     for(k=0; k<m+1; k++)    tmpArray[k]=INF;
@@ -104,7 +102,7 @@ double msmDistPruned(double *X, double *Y, int m, int n, double bsf, double slop
     unsigned int ec = 1;
     bool smallerFound, smaller_as_bsf;
     int ecNext;
-    for (int i = 0; i < m+1; i++)
+    for (i = 0; i < m+1; i++)
     {
         unsigned int bandwidth = computeBandwidth(upperBound);
         double start1 = slope * i;
@@ -114,11 +112,12 @@ double msmDistPruned(double *X, double *Y, int m, int n, double bsf, double slop
         double end1 = 1 / slope * i;
         double end2 = slope * i + (1 - slope) * m;
         int end = (int) ceil( min(end1, end2));
+
         double xi = X[i];
         ecNext = i;
         smallerFound = false;
         smaller_as_bsf = false;
-        for (j = start; j < end; j++)
+        for (j = start; j <= end; j++)
         {
             double yj = Y[j];
             double d1, d2, d3;
@@ -204,7 +203,7 @@ int main(  int argc , char *argv[] )
     double *buffer;
     double t1,t2,t3;
     double *time_result;
-    double *tmpArray;
+    double *tmpArray, *upperBoundArray;
     int tr_count = 0;
     long long loc = 0;
     long long i , j;
@@ -248,8 +247,11 @@ int main(  int argc , char *argv[] )
     buffer = (double *)malloc(sizeof(double)*EPOCH);
     if( buffer == NULL )
         error(1);
-    tmpArray = (double*)malloc(sizeof(double)*(m+1));
+    tmpArray = (double*)malloc(sizeof(double)*(m+2));
     if( tmpArray == NULL )
+        error(1);
+    upperBoundArray = (double*)malloc(sizeof(double)*(m+2));
+    if( upperBoundArray == NULL )
         error(1);
     /// Read query file
     bsf = INF;
@@ -337,7 +339,8 @@ int main(  int argc , char *argv[] )
                     {
                         tz[k] = (t[(k+j)] - mean)/std;
                     }
-                    distCalc = msmDistPruned(tz,q,m,m,bsf,slope,tmpArray);
+
+                    distCalc = msmDistPruned(tz,q,m,m,bsf,slope,tmpArray, upperBoundArray);
 
                     if( distCalc < bsf )
                     {   /// Update bsf
@@ -362,6 +365,7 @@ int main(  int argc , char *argv[] )
     free(tz);
     free(t);
     free(tmpArray);
+    free(upperBoundArray);
     t2 = clock();
     /// Output
     FILE *rd = NULL;
