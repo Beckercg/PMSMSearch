@@ -23,54 +23,25 @@ void error(int id)
     exit(1);
 }
 
-double lb_sakoe_tree(double *t, double *q, int len, double bsf, int maxwid)
-{
-    double lb, d,r,l,x,y;
-    double tmpt = t[(len-1)];
-    double tmpq = q[(len-1)];
-    int wid=1;
-    lb = dist(tmpt,tmpq);
-    if (lb >= bsf)   return lb;
-    for(int ij = 2; ij<maxwid+1; ij++){
-        switch(wid) {
-            case 1:
-                d = dist(t[(len - ij)], q[len - ij]);
-                if (dist(t[(len - ij)], q[len - ij]) > dist(t[(len - ij + wid)], q[len - ij])||
-                    dist(t[(len - ij)], q[len - ij]) > dist(t[(len - ij)], q[len - ij + wid]))
-                {wid++;}
-                else break;
-                d = min(dist(t[(len - ij + 1)], q[len - ij]), dist(t[(len - ij)], q[len - ij + 1]));
-            case 2:
-                x = min(dist(t[(len - ij + 1)], q[len - ij]), dist(t[(len - ij)], q[len - ij]));
-                y = min(dist(t[(len - ij)], q[len - ij + 1]), dist(t[(len - ij)], q[len - ij]));
-                d = min(y, x);
-                d = min(d, dist(t[(len - ij)], q[len - ij]));
-                if (dist(t[(len - ij + wid - 1)], q[len - ij]) > dist(t[(len - ij + wid)], q[len - ij])||
-                    dist(t[(len - ij)], q[len - ij + wid - 1]) > dist(t[(len - ij)], q[len - ij + wid]))
-                {wid++;}
-                else break;
-            default:
-                x = min(dist(t[(len - ij + wid - 1)], q[len - ij]), dist(t[(len - ij + wid - 2)], q[len - ij]));
-
-                if (wid > 3) {
-                    for (int w = 1; w < wid - 3; w++) {
-                        x = min(x, dist(t[(len - ij + w)], q[len - ij]));
-                        y = min(x, dist(t[(len - ij)], q[len - ij + w]));
-                    }
-                    d = min(y, x);
-                    d = min(d, dist(t[(len - ij)], q[len - ij]));
-                }
-
-                if (dist(t[(len - ij+ wid-1)], q[len - ij]) > dist(t[(len - ij + wid)], q[len - ij])||
-                    dist(t[(len - ij)], q[len - ij+ wid-1]) > dist(t[(len - ij)], q[len - ij+wid])) {
-                    if(wid==maxwid){
-                        return lb;
-                    }
-                    wid++;
-                }else break;
+double lb_sakoe_tree(double *t, double *q, int len, double bsf, int maxwid){
+    int sakoebound;
+    double lb=0, curmin, sakoemin;
+    for(int i = 0; i<len+1; i++){
+        sakoebound = i + maxwid;
+        if (sakoebound > len)
+            sakoebound = len;
+        curmin = dist(t[i],q[i]);
+        for(int sakoecounter = i; sakoecounter<len+1; sakoecounter++){
+            sakoemin = dist(t[sakoecounter],q[i]);
+            if(sakoemin<curmin)
+                curmin = sakoemin;
+            sakoemin = dist(t[i],q[sakoecounter]);
+            if(sakoemin<curmin)
+                curmin = sakoemin;
         }
-        lb += d;
-        if (lb >= bsf)   return lb;
+        lb += curmin;
+        if(lb>bsf)
+            return INF;
     }
     return lb;
 }

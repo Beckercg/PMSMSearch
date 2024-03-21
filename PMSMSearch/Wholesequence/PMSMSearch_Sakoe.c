@@ -128,7 +128,7 @@ double msmDistPruned(double *X, double *Y, int m, double bsf, double sakoe_bandw
         smallerFound = false;
         smaller_as_bsf = false;
         // column index
-        for (j = start; j < end; j++)
+        for (j = start; j <= end; j++)
         {
             double yj = ts2[j];
             double d1, d2, d3;

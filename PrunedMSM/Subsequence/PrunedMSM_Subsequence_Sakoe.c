@@ -288,11 +288,12 @@ int main(  int argc , char *argv[] )
         } else
         {
             /// Get time for epochs.
-            if (it%(1000000/(EPOCH-m+1))==0)
+            if (it%(100000/(EPOCH-m+1))==0){
                 fprintf(stderr,".");
                 t3 = clock();
                 time_result[tr_count] = (t3-t1)/CLOCKS_PER_SEC;
                 tr_count = tr_count + 1;
+            }
             /// run main task for each epoch
             ex=0; ex2=0;
             for(i=0; i<ep; i++)
@@ -360,5 +361,6 @@ int main(  int argc , char *argv[] )
     fprintf(rd,"[%i,%i]\n", move_counter, mergesplit_counter);
     fclose(rd);
 
+    free(time_result);
     return 0;
 }

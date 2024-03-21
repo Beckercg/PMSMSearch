@@ -23,26 +23,6 @@ void error(int id)
     exit(1);
 }
 
-double lb_kim_hierarchy(double *t, double *q, int len, double bsf, int r)
-{
-    double lb,d,e;
-    double tmpt, tmpq;
-    double tmpt_last = t[len-1];
-    double tmpq_last = q[(len-1)];
-    lb = dist(tmpt_last,tmpq_last);
-    if (lb >= bsf)   return lb;
-    for(int ij = 2; ij<r; ij++){
-        tmpt = t[len-ij];
-        tmpq = q[(len-ij)];
-        d = min(dist(tmpt_last,tmpq),dist(tmpt,tmpq_last));
-        e = min(d+C_COST,dist(tmpt,tmpq));
-        lb+= min(2*C_COST,e);
-        if (lb >= bsf)   return lb;
-        tmpt_last = tmpt;
-        tmpq_last = tmpq;
-    }
-    return lb;
-}
 
 double calculateMsmGreedyArray(double *X, double *Y, int m, double *greedyArray)
 {
@@ -119,6 +99,37 @@ double C(double new_point, double x, double y)
 double getLowerBound(int xCoord, int yCoord)
 {
     return fabs(xCoord - yCoord) * C_COST;
+}
+
+double lb_kim_hierarchy(double *X, double *Y, int m, double *tmpArray)
+{
+    int i, j, k;
+    for(k=0; k<m+1; k++)    tmpArray[k]=INF;
+    double tmp = 0;
+    for (i = 0; i < m+1; i++)
+    {
+        double xi = X[i];
+        for (j = 0; j < m+1; j++)
+        {
+            double yj = Y[j];
+            double d1, d2, d3;
+            d1 = tmp + fabs(xi - yj);
+            // merge
+            d2 = tmpArray[j] + C(xi, X[i - 1], yj);
+            // split
+            d3 = tmpArray[j - 1] + C(yj, xi, Y[j - 1]);
+            // store old entry before overwriting
+            tmp = tmpArray[j];
+            if (d1 <= min(d2, d3)){
+                tmpArray[j] = d1;
+            }else{
+                tmpArray[j] = min(d2, d3);
+            }
+        }
+        for(k=1; k<m-1; k++)    tmpArray[k]=INF;
+        tmp = INF;
+    }
+    return tmpArray[m];
 }
 
 double msmDistPruned(double *X, double *Y, int m, double bsf, double *tmpArray, double *upperBoundArray, double *ts1, double *ts2)
@@ -273,7 +284,7 @@ int main(  int argc , char *argv[] )
     for (int i = 0; i < query_size; i++){
         bsf = INF;
         for (int j = 0; j < sequence_size; j++){
-            glb = msmDistPruned(q_file[i]+(m-r), s_file[j]+(m-r), r, bsf, tmpArray, upperBoundArray, ts1, ts2);
+            glb = lb_kim_hierarchy(q_file[i]+(m-r),s_file[j]+(m-r),r, tmpArray);
             if(glb < bsf){
                 distance = msmDistPruned(q_file[i], s_file[j], m, bsf, tmpArray, upperBoundArray, ts1, ts2);
                 if(distance < bsf)

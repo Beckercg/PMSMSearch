@@ -15,26 +15,6 @@ int move_counter = 0; // global move counter
 int mil_mergesplit_counter = 0; // global merge and split counter
 int mil_move_counter = 0; // global move counter
 
-double lb_kim_hierarchy(double *t, double *q, int j, int len, double bsf, double mean, double std, int r)
-{
-    double lb,d,e;
-    double tmpt, tmpq;
-    double tmpt_last = (t[len-1+j] - mean) / std;
-    double tmpq_last = q[(len-1)];
-    lb = dist(tmpt_last,tmpq_last);
-    if (lb >= bsf)   return lb;
-    for(int ij = 2; ij<r; ij++){
-        tmpt = (t[len-ij+j] - mean) / std;
-        tmpq = q[(len-ij)];
-        d = min(dist(tmpt_last,tmpq),dist(tmpt,tmpq_last));
-        e = min(d+C_COST,dist(tmpt,tmpq));
-        lb+= min(2*C_COST,e);
-        if (lb >= bsf)   return lb;
-        tmpt_last = tmpt;
-        tmpq_last = tmpq;
-    }
-    return lb;
-}
 
 
 //vector<double> calculateMsmGreedyArray(const vector<double> &X, const vector<double> &Y)
@@ -114,7 +94,38 @@ double getLowerBound(int xCoord, int yCoord)
     return fabs(xCoord - yCoord) * C_COST;
 }
 
-double msmDistPruned(double *X, double *Y, int m, double bsf, double *tmpArray, double *upperBoundArray, bool isNotKim)
+double lb_kim_hierarchy(double *X, double *Y, int m, double *tmpArray)
+{
+    int i, j, k;
+    for(k=0; k<m+1; k++)    tmpArray[k]=INF;
+    double tmp = 0;
+    for (i = 0; i < m+1; i++)
+    {
+        double xi = X[i];
+        for (j = 0; j < m+1; j++)
+        {
+            double yj = Y[j];
+            double d1, d2, d3;
+            d1 = tmp + fabs(xi - yj);
+            // merge
+            d2 = tmpArray[j] + C(xi, X[i - 1], yj);
+            // split
+            d3 = tmpArray[j - 1] + C(yj, xi, Y[j - 1]);
+            // store old entry before overwriting
+            tmp = tmpArray[j];
+            if (d1 <= min(d2, d3)){
+                tmpArray[j] = d1;
+            }else{
+                tmpArray[j] = min(d2, d3);
+            }
+        }
+        for(k=1; k<m-1; k++)    tmpArray[k]=INF;
+        tmp = INF;
+    }
+    return tmpArray[m];
+}
+
+double msmDistPruned(double *X, double *Y, int m, double bsf, double *tmpArray, double *upperBoundArray)
 {
     *upperBoundArray = calculateMsmGreedyArray(X, Y, m, upperBoundArray);
     double upperBound = upperBoundArray[0] + 0.0000001;
@@ -145,10 +156,10 @@ double msmDistPruned(double *X, double *Y, int m, double bsf, double *tmpArray, 
             d3 = tmpArray[j - 1] + C(yj, xi, Y[j - 1]);
             // store old entry before overwriting
             tmp = tmpArray[j];
-            if (d1 <= min(d2, d3) && isNotKim){
+            if (d1 <= min(d2, d3)){
                 move_counter++; // move
                 tmpArray[j] = d1;
-            }else if (isNotKim){
+            }else{
                 mergesplit_counter++; // merge or split
                 tmpArray[j] = min(d2, d3);
             }
@@ -238,7 +249,7 @@ int main(  int argc , char *argv[] )
     if (argc>4)
     {
         r = atol(argv[4]);
-        r = (int)(r/100.0)*m;
+        r = (int)((r*m)/100.0);
     }
     fp = fopen(argv[1],"r");
     if( fp == NULL )
@@ -323,11 +334,12 @@ int main(  int argc , char *argv[] )
         } else
         {
             /// Get time for epochs.
-            if (it%(100000/(EPOCH-m+1))==0)
+            if (it%(100000/(EPOCH-m+1))==0){
                 fprintf(stderr,".");
                 t3 = clock();
                 time_result[tr_count] = (t3-t1)/CLOCKS_PER_SEC;
                 tr_count = tr_count + 1;
+            }
             /// run main task for each epoch
             ex=0; ex2=0;
             for(i=0; i<ep; i++)
@@ -356,11 +368,11 @@ int main(  int argc , char *argv[] )
                     {
                         tz[k] = (t[(k+j)] - mean)/std;
                     }
-                    global_lb = msmDistPruned(tz+(m-r),q+(m-r),r,bsf, tmpArray, upperBoundArray, false);
+                    global_lb = lb_kim_hierarchy(tz+(m-r),q+(m-r),r, tmpArray);
                     if (global_lb < bsf)
                     {
 
-                        distCalc = msmDistPruned(tz,q,m,bsf, tmpArray, upperBoundArray, true);
+                        distCalc = msmDistPruned(tz,q,m,bsf, tmpArray, upperBoundArray);
                         if( distCalc < bsf )
                         {   /// Update bsf
                             bsf = distCalc;

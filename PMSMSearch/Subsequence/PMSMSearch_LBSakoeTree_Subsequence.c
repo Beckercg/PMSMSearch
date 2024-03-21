@@ -15,58 +15,29 @@ int move_counter = 0; // global move counter
 int mil_mergesplit_counter = 0; // global merge and split counter
 int mil_move_counter = 0; // global move counter
 
-double lb_sakoe_tree(double *t, double *q, int len, double bsf, int maxwid)
-{
-    double lb, d,r,l,x,y;
-    double tmpt = t[(len-1)];
-    double tmpq = q[(len-1)];
-    int wid=1;
-    lb = dist(tmpt,tmpq);
-    if (lb >= bsf)   return lb;
-    for(int ij = 2; ij<maxwid+1; ij++){
-        switch(wid) {
-            case 1:
-                d = dist(t[(len - ij)], q[len - ij]);
-                if (dist(t[(len - ij)], q[len - ij]) > dist(t[(len - ij + wid)], q[len - ij])||
-                    dist(t[(len - ij)], q[len - ij]) > dist(t[(len - ij)], q[len - ij + wid]))
-                {wid++;}
-                else break;
-                d = min(dist(t[(len - ij + 1)], q[len - ij]), dist(t[(len - ij)], q[len - ij + 1]));
-            case 2:
-                x = min(dist(t[(len - ij + 1)], q[len - ij]), dist(t[(len - ij)], q[len - ij]));
-                y = min(dist(t[(len - ij)], q[len - ij + 1]), dist(t[(len - ij)], q[len - ij]));
-                d = min(y, x);
-                d = min(d, dist(t[(len - ij)], q[len - ij]));
-                if (dist(t[(len - ij + wid - 1)], q[len - ij]) > dist(t[(len - ij + wid)], q[len - ij])||
-                    dist(t[(len - ij)], q[len - ij + wid - 1]) > dist(t[(len - ij)], q[len - ij + wid]))
-                {wid++;}
-                else break;
-            default:
-                x = min(dist(t[(len - ij + wid - 1)], q[len - ij]), dist(t[(len - ij + wid - 2)], q[len - ij]));
 
-                if (wid > 3) {
-                    for (int w = 1; w < wid - 3; w++) {
-                        x = min(x, dist(t[(len - ij + w)], q[len - ij]));
-                        y = min(x, dist(t[(len - ij)], q[len - ij + w]));
-                    }
-                    d = min(y, x);
-                    d = min(d, dist(t[(len - ij)], q[len - ij]));
-                }
-
-                if (dist(t[(len - ij+ wid-1)], q[len - ij]) > dist(t[(len - ij + wid)], q[len - ij])||
-                    dist(t[(len - ij)], q[len - ij+ wid-1]) > dist(t[(len - ij)], q[len - ij+wid])) {
-                    if(wid==maxwid){
-                        return lb;
-                    }
-                    wid++;
-                }else break;
+double lb_sakoe_tree(double *t, double *q, int len, double bsf, int maxwid){
+    int sakoebound;
+    double lb=0, curmin, sakoemin;
+    for(int i = 0; i<len+1; i++){
+        sakoebound = i + maxwid;
+        if (sakoebound > len)
+            sakoebound = len;
+        curmin = dist(t[i],q[i]);
+        for(int sakoecounter = i; sakoecounter<len+1; sakoecounter++){
+            sakoemin = dist(t[sakoecounter],q[i]);
+            if(sakoemin<curmin)
+                curmin = sakoemin;
+            sakoemin = dist(t[i],q[sakoecounter]);
+            if(sakoemin<curmin)
+                curmin = sakoemin;
         }
-        lb += d;
-        if (lb >= bsf)   return lb;
+        lb += curmin;
+        if(lb>bsf)
+            return INF;
     }
     return lb;
 }
-
 
 //vector<double> calculateMsmGreedyArray(const vector<double> &X, const vector<double> &Y)
 double calculateMsmGreedyArray(double *X, double *Y, int m, double *greedyArray)
@@ -355,11 +326,12 @@ int main(  int argc , char *argv[] )
         } else
         {
             /// Get time for epochs.
-            if (it%(100000/(EPOCH-m+1))==0)
+            if (it%(100000/(EPOCH-m+1))==0){
                 fprintf(stderr,".");
                 t3 = clock();
                 time_result[tr_count] = (t3-t1)/CLOCKS_PER_SEC;
                 tr_count = tr_count + 1;
+            }
             /// run main task for each epoch
             ex=0; ex2=0;
             for(i=0; i<ep; i++)
@@ -391,13 +363,12 @@ int main(  int argc , char *argv[] )
                     global_lb = lb_sakoe_tree(tz, q,  m, bsf, r);
                     if (global_lb < bsf)
                     {
-
-                            distCalc = msmDistPruned(tz,q,m,bsf,tmpArray, upperBoundArray);
-                            if( distCalc < bsf )
-                            {   /// Update bsf
-                                bsf = distCalc;
-                                loc = (it)*(EPOCH-m+1) + i-m+1;
-                            }
+                        distCalc = msmDistPruned(tz,q,m,bsf,tmpArray, upperBoundArray);
+                        if( distCalc < bsf )
+                        {   /// Update bsf
+                            bsf = distCalc;
+                            loc = (it)*(EPOCH-m+1) + i-m+1;
+                        }
                     } else{
                         sakoetree++;
                     }

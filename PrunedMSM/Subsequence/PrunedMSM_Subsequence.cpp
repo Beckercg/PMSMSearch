@@ -1,8 +1,11 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdbool.h>
-#include <math.h>
-#include <time.h>
+#include <vector>
+#include <cmath>
+#include <cstdio>
+#include <cstdlib>
+#include <ctime>
+#include <fstream>
+
+using namespace std;
 
 #define min(x,y) ((x)<(y)?(x):(y))
 #define max(x,y) ((x)>(y)?(x):(y))
@@ -16,14 +19,13 @@ int move_counter = 0; // global move counter
 int mil_mergesplit_counter = 0; // global merge and split counter
 int mil_move_counter = 0; // global move counter
 
-
 vector<double> calculateMsmGreedyArray(const vector<double> &X, const vector<double> &Y)
 {
-    const vector<double>::size_type m = X.size();
+    const std::vector<double>::size_type m = X.size();
 
     vector<double> greedyArray;
     // greedyArray.reserve(m + 1);
-    greedyArray = vector<double>(m + 1, 0);
+    greedyArray = std::vector<double>(m + 1, 0);
 
     // compute upper Bounds for every diagonal entry
     // the upper bound is computed from right to left: Possibility to update the upper Bound when a diagonal entry is computed
@@ -41,7 +43,7 @@ vector<double> calculateMsmGreedyArray(const vector<double> &X, const vector<dou
 
     greedyArray[m - 1] = distCurrent;
 
-    for (vector<double>::size_type i = 2; i <= m; i++)
+    for (std::vector<double>::size_type i = 2; i <= m; i++)
     {
         xCurrent = X[m - i];
         yCurrent = Y[m - i];
@@ -88,6 +90,7 @@ vector<double> calculateMsmGreedyArray(const vector<double> &X, const vector<dou
     return greedyArray;
 }
 
+
 unsigned int computeBandwidth(double upperBound)
 {
 
@@ -129,14 +132,13 @@ double getLowerBound(int xCoord, int yCoord)
  */
 double msmDistPruned(const vector<double> &X, const vector<double> &Y)
 {
-
-    const vector<double>::size_type m = X.size();
+    const std::vector<double>::size_type m = X.size();
 
     vector<double> upperBoundArray = calculateMsmGreedyArray(X, Y);
     double upperBound = upperBoundArray[0] + 0.0000001;
 
-    vector<double> ts1 = vector<double>(1, INF);
-    vector<double> ts2 = vector<double>(1, INF);
+    vector<double> ts1 = std::vector<double>(1, INF);
+    vector<double> ts2 = std::vector<double>(1, INF);
 
     ts1.reserve(m + 1);
     ts2.reserve(m + 1);
@@ -144,11 +146,10 @@ double msmDistPruned(const vector<double> &X, const vector<double> &Y)
     ts1.insert(ts1.end(), X.begin(), X.end());
     ts2.insert(ts2.end(), Y.begin(), Y.end());
 
-
     // Create an array with one extra entry, regarding the whole matrix we initialize
     // MsmDistAStar.Entry [0,0] is set to 0
     // the first row and the first column with inf --> Every entry follows the same computational rules
-    vector<double> tmpArray = vector<double>(m + 1, INF);
+    vector<double> tmpArray = std::vector<double>(m + 1, INF);
 
     // value storing the first "real value" of the array before overwriting it
     //  the first value of the first row has to be 0
@@ -168,7 +169,7 @@ double msmDistPruned(const vector<double> &X, const vector<double> &Y)
 
     //  int counterBandwidth =0;
     // row index
-    for (vector<double>::size_type i = 1; i < tmpArray.size(); i++)
+    for (std::vector<double>::size_type i = 0; i < tmpArray.size(); i++)
     {
 
         // compute bandwidth regarding the upper bound
@@ -183,12 +184,12 @@ double msmDistPruned(const vector<double> &X, const vector<double> &Y)
         // the upper bound (Euclidean distance = diagonal path)
         ecNext = i;
         smallerFound = false;
+
         // column index
-        for (vector<double>::size_type j = start; j < end; j++)
+        for (std::vector<double>::size_type j = start; j < end; j++)
         {
 
             double yj = ts2[j];
-
             double d1, d2, d3;
             d1 = tmp + abs(xi - yj);
             // merge
@@ -221,7 +222,7 @@ double msmDistPruned(const vector<double> &X, const vector<double> &Y)
                     sc = j + 1;
                 if (j > ec)
                 {
-                    fill(tmpArray.begin() + j + 1, tmpArray.end(), INF);
+                    std::fill(tmpArray.begin() + j + 1, tmpArray.end(), INF);
                     break;
                 }
             }
@@ -236,8 +237,9 @@ double msmDistPruned(const vector<double> &X, const vector<double> &Y)
                 upperBound = tmpArray[j] + upperBoundArray[j] + 0.00001;
             }
         }
+
         // tmpArray = this.fillWithInf(1, sc, tmpArray);
-        fill(tmpArray.begin() + 1, tmpArray.begin() + sc, INF);
+        std::fill(tmpArray.begin() + 1, tmpArray.begin() + sc, INF);
 
         // set tmp to infinity since the move computation in the next row is not possible and accesses tmp
         tmp = INF;
@@ -271,10 +273,6 @@ int main(  int argc , char *argv[] )
     FILE *fp;            /// data file pointer
     FILE *qp;            /// query file pointer
     double bsf;          /// best-so-far
-    double *t, *q;       /// data array and query array
-    int *order;          ///new order of the query
-    double *u, *l, *qo, *uo, *lo,*tz,*cb, *cb1, *cb2,*u_d, *l_d;
-    double *time_result;
     int tr_count = 0;
 
 
@@ -285,7 +283,6 @@ int main(  int argc , char *argv[] )
     long long loc = 0;
     double t1,t2,t3;
     double distCalc=0;
-    double *buffer, *u_buff, *l_buff;
 
     /// For every EPOCH points, all cummulative values, such as ex (sum), ex2 (sum square), will be restarted for reducing the floating point error.
     int EPOCH = 100000;
@@ -298,6 +295,17 @@ int main(  int argc , char *argv[] )
     if (argc>3)
         m = atol(argv[3]);
 
+    vector<double> tz;
+    tz = std::vector<double>(m, 0);
+    vector<double> t;
+    t = std::vector<double>(2*m, 0);
+    vector<double> q;
+    q = std::vector<double>(m, 0);
+    vector<double> buffer;
+    buffer = std::vector<double>(EPOCH, 0);
+    vector<double> time_result;
+    time_result = std::vector<double>(m*20, 0);
+
     fp = fopen(argv[1],"r");
     if( fp == NULL )
         error(2);
@@ -309,74 +317,7 @@ int main(  int argc , char *argv[] )
     /// start the clock
     t1 = clock();
 
-    time_result = (double *)malloc(sizeof(double)*500);
-    if( time_result == NULL )
-        error(1);
-    /// malloc everything here
-    q = (double *)malloc(sizeof(double)*m);
-    if( q == NULL )
-        error(1);
-    qo = (double *)malloc(sizeof(double)*m);
-    if( qo == NULL )
-        error(1);
-    uo = (double *)malloc(sizeof(double)*m);
-    if( uo == NULL )
-        error(1);
-    lo = (double *)malloc(sizeof(double)*m);
-    if( lo == NULL )
-        error(1);
 
-    order = (int *)malloc(sizeof(int)*m);
-    if( order == NULL )
-        error(1);
-
-    u = (double *)malloc(sizeof(double)*m);
-    if( u == NULL )
-        error(1);
-
-    l = (double *)malloc(sizeof(double)*m);
-    if( l == NULL )
-        error(1);
-
-    cb = (double *)malloc(sizeof(double)*m);
-    if( cb == NULL )
-        error(1);
-
-    cb1 = (double *)malloc(sizeof(double)*m);
-    if( cb1 == NULL )
-        error(1);
-
-    cb2 = (double *)malloc(sizeof(double)*m);
-    if( cb2 == NULL )
-        error(1);
-
-    u_d = (double *)malloc(sizeof(double)*m);
-    if( u == NULL )
-        error(1);
-
-    l_d = (double *)malloc(sizeof(double)*m);
-    if( l == NULL )
-        error(1);
-
-    t = (double *)malloc(sizeof(double)*m*2);
-    if( t == NULL )
-        error(1);
-
-    tz = (double *)malloc(sizeof(double)*m);
-    if( tz == NULL )
-        error(1);
-
-    buffer = (double *)malloc(sizeof(double)*EPOCH);
-    if( buffer == NULL )
-        error(1);
-
-    u_buff = (double *)malloc(sizeof(double)*EPOCH);
-    if( u_buff == NULL )
-        error(1);
-
-    l_buff = (double *)malloc(sizeof(double)*EPOCH);
-    if( l_buff == NULL )
-        error(1);
 
 
     /// Read query file
@@ -403,12 +344,6 @@ int main(  int argc , char *argv[] )
 
 
 
-    /// Initial the cummulative lower bound
-    for( i=0; i<m; i++)
-    {   cb[i]=0;
-        cb1[i]=0;
-        cb2[i]=0;
-    }
     i = 0;          /// current index of the data in current chunk of size EPOCH
     j = 0;          /// the starting index of the data in the circular array, t
     ex = ex2 = 0;
@@ -447,11 +382,12 @@ int main(  int argc , char *argv[] )
         {
 
             /// Just for printing a dot for approximate a million point. Not much accurate.
-            if (it%(1000000/(EPOCH-m+1))==0)
+            if (it%(100000/(EPOCH-m+1))==0){
                 fprintf(stderr,".");
                 t3 = clock();
                 time_result[tr_count] = (t3-t1)/CLOCKS_PER_SEC;
                 tr_count = tr_count + 1;
+            }
 
             /// Do main task here..
             ex=0; ex2=0;
@@ -487,7 +423,7 @@ int main(  int argc , char *argv[] )
                     {
                         tz[k] = (t[(k+j)] - mean)/std;
                     }
-                    distCalc = msmDistPruned(tz,q,m);
+                    distCalc = msmDistPruned(tz,q);
 
                     if( distCalc < bsf )
                     {   /// Update bsf
@@ -512,21 +448,6 @@ int main(  int argc , char *argv[] )
     i = (it)*(EPOCH-m+1) + ep;
     fclose(fp);
 
-    free(q);
-    free(u);
-    free(l);
-    free(uo);
-    free(lo);
-    free(qo);
-    free(cb);
-    free(cb1);
-    free(cb2);
-    free(tz);
-    free(t);
-    free(l_d);
-    free(u_d);
-    free(l_buff);
-    free(u_buff);
 
     t2 = clock();
 
@@ -534,7 +455,7 @@ int main(  int argc , char *argv[] )
     rd = fopen("subsequence_results.csv", "a");
     fprintf(rd,"%s,%i,%lli,%f,%lld,%f\n", "PrunedMSM", m,i,bsf,loc, (t2-t1)/CLOCKS_PER_SEC);
     fprintf(rd,"Times for every 100000: [");
-    for (int i = 0; i < tr_count; i++){
+    for (i = 0; i < tr_count; i++){
         fprintf(rd,"%f, ", time_result[i]);
     }
     fprintf(rd,"[%i,%i]\n", mil_move_counter, mil_mergesplit_counter);
