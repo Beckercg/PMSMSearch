@@ -12,6 +12,8 @@
 
 int mergesplit_counter = 0; // global merge and split counter
 int move_counter = 0; // global move counter
+int mil_mergesplit_counter = 0; // global merge and split counter
+int mil_move_counter = 0; // global move counter
 
 double calculateMsmGreedyArray(double *X, double *Y, int m, double *greedyArray)
 {
@@ -89,13 +91,11 @@ double getLowerBound(int xCoord, int yCoord)
     return fabs(xCoord - yCoord) * C_COST;
 }
 
-double msmDistPruned(double *X, double *Y, int m, double sakoe_bandwidth, double *upperBoundArray)
+double msmDistPruned(double *X, double *Y, int m, double sakoe_bandwidth, double *tmpArray, double *upperBoundArray)
 {
     *upperBoundArray = calculateMsmGreedyArray(X, Y, m, upperBoundArray);
     double upperBound = upperBoundArray[0] + 0.0000001;
-    double *tmpArray;
     int i, j, k;
-    tmpArray = (double*)malloc(sizeof(double)*(m+1));
     for(k=0; k<m+1; k++)    tmpArray[k]=INF;
     double tmp = 0;
     unsigned int sc = 1;
@@ -128,6 +128,14 @@ double msmDistPruned(double *X, double *Y, int m, double sakoe_bandwidth, double
             }else{
                 mergesplit_counter++; // merge or split
                 tmpArray[j] = min(d2, d3);
+            }
+            if (move_counter == 1000000){
+                mil_move_counter++;
+                move_counter=0;
+            }
+            if (mergesplit_counter == 1000000){
+                mil_mergesplit_counter++;
+                mergesplit_counter=0;
             }
             // PruningExperiments strategy
             double lb = getLowerBound(i, j);
@@ -229,7 +237,7 @@ int main(  int argc , char *argv[] )
     buffer = (double *)malloc(sizeof(double)*EPOCH);
     if( buffer == NULL )
         error(1);
-    tmpArray = (double*)malloc(sizeof(double)*(m+1));
+    tmpArray = (double*)malloc(sizeof(double)*(m+2));
     if( tmpArray == NULL )
         error(1);
     upperBoundArray = (double*)malloc(sizeof(double)*(m+2));
@@ -322,7 +330,7 @@ int main(  int argc , char *argv[] )
                     {
                         tz[k] = (t[(k+j)] - mean)/std;
                     }
-                    distCalc = msmDistPruned(tz,q,m,bandwidth, upperBoundArray);
+                    distCalc = msmDistPruned(tz,q,m,bandwidth,tmpArray, upperBoundArray);
 
                     if( distCalc < bsf )
                     {   /// Update bsf
@@ -358,7 +366,7 @@ int main(  int argc , char *argv[] )
         fprintf(rd,"%f, ", time_result[i]);
     }
     fprintf(rd,"]\n");
-    fprintf(rd,"[%i,%i]\n", move_counter, mergesplit_counter);
+    fprintf(rd,"[%i,%i]\n", mil_move_counter, mil_mergesplit_counter);
     fclose(rd);
 
     free(time_result);

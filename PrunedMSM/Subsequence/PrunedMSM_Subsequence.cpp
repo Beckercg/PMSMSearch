@@ -19,9 +19,8 @@ int move_counter = 0; // global move counter
 int mil_mergesplit_counter = 0; // global merge and split counter
 int mil_move_counter = 0; // global move counter
 
-vector<double> calculateMsmGreedyArray(const vector<double> &X, const vector<double> &Y)
+vector<double> calculateMsmGreedyArray(const vector<double> &X, const vector<double> &Y,int m)
 {
-    const std::vector<double>::size_type m = X.size();
 
     vector<double> greedyArray;
     // greedyArray.reserve(m + 1);
@@ -130,27 +129,20 @@ double getLowerBound(int xCoord, int yCoord)
  * @return pair: first Double: Distance, second Double: relative amount of pruned cells
  * msmDistPruned by Jana Holznigenkemper
  */
-double msmDistPruned(const vector<double> &X, const vector<double> &Y)
+double msmDistPruned(const vector<double> &X, const vector<double> &Y, int m)
 {
-    const std::vector<double>::size_type m = X.size();
 
-    vector<double> upperBoundArray = calculateMsmGreedyArray(X, Y);
+    vector<double> upperBoundArray = calculateMsmGreedyArray(X, Y,m);
     double upperBound = upperBoundArray[0] + 0.0000001;
 
-    vector<double> ts1 = std::vector<double>(1, INF);
-    vector<double> ts2 = std::vector<double>(1, INF);
 
-    ts1.reserve(m + 1);
-    ts2.reserve(m + 1);
-
-    ts1.insert(ts1.end(), X.begin(), X.end());
-    ts2.insert(ts2.end(), Y.begin(), Y.end());
-
+    int i,j,k;
     // Create an array with one extra entry, regarding the whole matrix we initialize
     // MsmDistAStar.Entry [0,0] is set to 0
     // the first row and the first column with inf --> Every entry follows the same computational rules
-    vector<double> tmpArray = std::vector<double>(m + 1, INF);
+    vector<double> tmpArray = std::vector<double>(m + 2);
 
+    for(k=0; k<m+1; k++)    tmpArray[k]=INF;
     // value storing the first "real value" of the array before overwriting it
     //  the first value of the first row has to be 0
     double tmp = 0;
@@ -169,16 +161,17 @@ double msmDistPruned(const vector<double> &X, const vector<double> &Y)
 
     //  int counterBandwidth =0;
     // row index
-    for (std::vector<double>::size_type i = 0; i < tmpArray.size(); i++)
+    for (i = 0; i < m+1; i++)
     {
 
         // compute bandwidth regarding the upper bound
         unsigned int bandwidth = computeBandwidth(upperBound);
         unsigned int start = (bandwidth > i) ? sc : max(sc, i - bandwidth);
 
-        unsigned int end = min(i + bandwidth + 1, tmpArray.size());
+        unsigned int end = min(i + bandwidth + 1, m+1);
 
-        double xi = ts1[i];
+        double xi = X[i];
+
         // the index for the pruned end cannot be lower than the diagonal
         // All entries on the diagonal have to be equal or smaller than
         // the upper bound (Euclidean distance = diagonal path)
@@ -189,13 +182,13 @@ double msmDistPruned(const vector<double> &X, const vector<double> &Y)
         for (std::vector<double>::size_type j = start; j < end; j++)
         {
 
-            double yj = ts2[j];
+            double yj = Y[j];
             double d1, d2, d3;
-            d1 = tmp + abs(xi - yj);
+            d1 = tmp + fabs(xi - yj);
             // merge
-            d2 = tmpArray[j] + C(xi, ts1[i - 1], yj);
+            d2 = tmpArray[j] + C(xi, X[i - 1], yj);
             // split
-            d3 = tmpArray[j - 1] + C(yj, xi, ts2[j - 1]);
+            d3 = tmpArray[j - 1] + C(yj, xi, Y[j - 1]);
 
             // store old entry before overwriting
             tmp = tmpArray[j];
@@ -218,11 +211,13 @@ double msmDistPruned(const vector<double> &X, const vector<double> &Y)
             double lb = getLowerBound(i, j);
             if ((tmpArray[j] + lb) > upperBound)
             {
+
                 if (!smallerFound)
                     sc = j + 1;
                 if (j > ec)
                 {
-                    std::fill(tmpArray.begin() + j + 1, tmpArray.end(), INF);
+
+                    for(k=j+1; k<m+1; k++)    tmpArray[k]=INF;
                     break;
                 }
             }
@@ -239,13 +234,14 @@ double msmDistPruned(const vector<double> &X, const vector<double> &Y)
         }
 
         // tmpArray = this.fillWithInf(1, sc, tmpArray);
-        std::fill(tmpArray.begin() + 1, tmpArray.begin() + sc, INF);
 
+        for(k=1; k<sc; k++)    tmpArray[k]=INF;
         // set tmp to infinity since the move computation in the next row is not possible and accesses tmp
         tmp = INF;
         ec = ecNext;
     }
 
+    fprintf(stderr,"%f\n", tmpArray[m]);
     return tmpArray[m];
 }
 
@@ -423,7 +419,7 @@ int main(  int argc , char *argv[] )
                     {
                         tz[k] = (t[(k+j)] - mean)/std;
                     }
-                    distCalc = msmDistPruned(tz,q);
+                    distCalc = msmDistPruned(tz,q,m);
 
                     if( distCalc < bsf )
                     {   /// Update bsf

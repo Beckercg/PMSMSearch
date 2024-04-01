@@ -23,9 +23,8 @@ void error(int id)
     exit(1);
 }
 
-double* calculateMsmGreedyArray(double *X, double *Y, int m)
+double calculateMsmGreedyArray(double *X, double *Y, int m, double *greedyArray)
 {
-    double* greedyArray = malloc((m+1) * sizeof(double));
     for(int i = 0; i < m+1; i++) {
         greedyArray[i] = 0;
     }
@@ -79,7 +78,7 @@ double* calculateMsmGreedyArray(double *X, double *Y, int m)
         xTmp = xCurrent;
         yTmp = yCurrent;
     }
-    return greedyArray;
+    return *greedyArray;
 }
 
 unsigned int computeBandwidth(double upperBound)
@@ -101,11 +100,9 @@ double getLowerBound(int xCoord, int yCoord)
     return fabs(xCoord - yCoord) * C_COST;
 }
 
-double msmDistPruned(double *X, double *Y, int m, int n, double slope)
+double msmDistPruned(double *X, double *Y, int m, int n, double slope, double *tmpArray, double *upperBoundArray, double *ts1, double *ts2)
 {
-    double* upperBoundArray = calculateMsmGreedyArray(X, Y, m);
-    double* ts1 = malloc((m+2) * sizeof(double));
-    double* ts2 = malloc((m+2) * sizeof(double));
+    *upperBoundArray = calculateMsmGreedyArray(X, Y, m, upperBoundArray);
     double upperBound = upperBoundArray[0] + 0.0000001;
     ts1[0] = INF;
     ts2[0] = INF;
@@ -114,7 +111,6 @@ double msmDistPruned(double *X, double *Y, int m, int n, double slope)
         ts2[i] = Y[i-1]; // Copy elements from X to ts1
     }
     int i, j, k;
-    double* tmpArray = malloc((m+2) * sizeof(double));
     for(k=0; k<m+2; k++)    tmpArray[k]=INF;
     double tmp = 0;
     unsigned int sc = 1;
@@ -175,12 +171,7 @@ double msmDistPruned(double *X, double *Y, int m, int n, double slope)
         tmp = INF;
         ec = ecNext;
     }
-    free(upperBoundArray);
-    free(ts1);
-    free(ts2);
-    double result = tmpArray[m];
-    free(tmpArray);
-    return result;
+    return tmpArray[m];
 }
 
 
@@ -192,6 +183,7 @@ int main(  int argc , char *argv[] )
     char dataset[50];
     char querypath[200];
     char sequencepath[200];
+    double *tmpArray, *upperBoundArray, *ts1, *ts2;
     double d, t1, t2, bsf, distance, bclass, acc, slope;
     //read args
     if (argc<=5)
@@ -211,6 +203,10 @@ int main(  int argc , char *argv[] )
     double** s_file = (double**)malloc(sequence_size * sizeof(double*));
     double* qclass = (double*)malloc(query_size * sizeof(double));
     double* sclass = (double*)malloc(sequence_size * sizeof(double));
+    tmpArray = (double*)malloc(sizeof(double)*(m+2));
+    upperBoundArray = (double*)malloc(sizeof(double)*(m+2));
+    ts1 = malloc((m+2) * sizeof(double));
+    ts2 = malloc((m+2) * sizeof(double));
     for (i = 0; i < query_size; i++) {
         // Allocate a memory block of size m+1 for each row
         q_file[i] = (double*)malloc((m+1) * sizeof(double));
@@ -257,7 +253,7 @@ int main(  int argc , char *argv[] )
     for (int i = 0; i < query_size; i++){
         bsf = INF;
         for (int j = 0; j < sequence_size; j++){
-            distance = msmDistPruned(q_file[i], s_file[j], m, m, slope);
+            distance = msmDistPruned(q_file[i], s_file[j], m, m, slope, tmpArray, upperBoundArray, ts1, ts2);
             if(distance < bsf)
             {
                 bsf = distance;
@@ -277,6 +273,10 @@ int main(  int argc , char *argv[] )
     free(s_file);
     free(qclass);
     free(sclass);
+    free(tmpArray);
+    free(upperBoundArray);
+    free(ts1);
+    free(ts2);
 
     acc = (double)tp / (double)query_size;
     FILE *rd = NULL;    //result data

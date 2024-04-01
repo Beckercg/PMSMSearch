@@ -12,6 +12,22 @@
 #define C_COST 0.5 // cost for merge and split
 #define INF 1e20   // pseudo infinite number for this code
 
+
+
+typedef struct Index
+{   double value;
+    int    index;
+} Index;
+
+int comp(const void *a, const void* b)
+{   Index* x = (Index*)a;
+    Index* y = (Index*)b;
+    double diff = x->value - y->value;
+    if (diff > 0) return 1;
+    else if (diff < 0) return -1;
+    else return 0;
+}
+
 void error(int id)
 {
     if(id==1)
@@ -21,6 +37,20 @@ void error(int id)
     else if ( id == 2 )
         printf("Error while open file!");
     exit(1);
+}
+
+double lb_sorted(Index *t, Index *q, int len, double bsf)
+{
+    double lb=0, d;
+    for(int l = 1; l<len; l++){
+        d = dist(t[l].value, q[l].value);
+        if(d>2*C_COST)d=2*C_COST;
+        lb += d;
+        if (lb >= bsf)   {
+            return lb;
+        }
+    }
+    return lb;
 }
 
 double calculateMsmGreedyArray(double *X, double *Y, int m, double *greedyArray)
@@ -100,7 +130,7 @@ double getLowerBound(int xCoord, int yCoord)
     return fabs(xCoord - yCoord) * C_COST;
 }
 
-double msmDistPruned(double *X, double *Y, int m, double *tmpArray, double *upperBoundArray, double *ts1, double *ts2)
+double msmDistPruned(double *X, double *Y, int m, double bsf, double *tmpArray, double *upperBoundArray, double *ts1, double *ts2)
 {
     *upperBoundArray = calculateMsmGreedyArray(X, Y, m, upperBoundArray);
     double upperBound = upperBoundArray[0] + 0.0000001;
@@ -115,17 +145,17 @@ double msmDistPruned(double *X, double *Y, int m, double *tmpArray, double *uppe
     double tmp = 0;
     unsigned int sc = 1;
     unsigned int ec = 1;
-    bool smallerFound;
+    bool smallerFound, smaller_as_bsf;
     int ecNext;
     for (i = 1; i < m+1; i++)
     {
         unsigned int bandwidth = computeBandwidth(upperBound);
-        if (sakoe_bandwidth < bandwidth) bandwidth = sakoe_bandwidth;
         unsigned int start = (bandwidth > i) ? sc : max(sc, i - bandwidth);
         unsigned int end = min(i + bandwidth + 1, m+1);
         double xi = ts1[i];
         ecNext = i;
         smallerFound = false;
+        smaller_as_bsf = false;
         // column index
         for (j = start; j < end; j++)
         {
@@ -139,6 +169,9 @@ double msmDistPruned(double *X, double *Y, int m, double *tmpArray, double *uppe
             // store old entry before overwriting
             tmp = tmpArray[j];
             tmpArray[j] = min(d1, min(d2, d3));
+            if (tmpArray[j] < bsf) {
+                smaller_as_bsf = true;
+            }
             // PruningExperiments strategy
             double lb = getLowerBound(i, j);
             if ((tmpArray[j] + lb) > upperBound)
@@ -161,7 +194,7 @@ double msmDistPruned(double *X, double *Y, int m, double *tmpArray, double *uppe
                 upperBound = tmpArray[j] + upperBoundArray[j] + 0.00001;
             }
         }
-
+        if (!smaller_as_bsf) return INF;
         for(k=1; k<sc; k++)    tmpArray[k]=INF;
         tmp = INF;
         ec = ecNext;
@@ -174,23 +207,22 @@ int main(  int argc , char *argv[] )
 {
     FILE *sp;
     FILE *qp;
-    int m, query_size, sequence_size, i, j, tp = 0;
+    int m, query_size, sequence_size, i, j, tp = 0, lb_count=0;
     char dataset[50];
     char querypath[200];
     char sequencepath[200];
     double *tmpArray, *upperBoundArray, *ts1, *ts2;
-    double d, t1, t2, bsf, distance, bclass, acc, bandwidth;
+    double d, t1, t2, bsf, distance, bclass, acc, glb;
+    Index *Q_tmp, *T_tmp;
 
     //read args
-    if (argc<=5)
+    if (argc<=4)
         error(4);
     // Copy dataset name from argv[1]
     strncpy(dataset, argv[1], 99);
     m = atol(argv[2]);
     query_size = atol(argv[3]);
     sequence_size = atol(argv[4]);
-    bandwidth = atol(argv[5]);
-    bandwidth = ((double)bandwidth/100.0)*m;
     dataset[99] = '\0'; // Ensuring null-termination
     // Construct querypath
     snprintf(querypath, sizeof(querypath), "data/%s/%s_TEST.tsv", dataset, dataset);
@@ -204,6 +236,12 @@ int main(  int argc , char *argv[] )
     upperBoundArray = (double*)malloc(sizeof(double)*(m+2));
     ts1 = malloc((m+2) * sizeof(double));
     ts2 = malloc((m+2) * sizeof(double));
+    Q_tmp = (Index *)malloc(sizeof(Index)*m);
+    if( Q_tmp == NULL )
+        error(1);
+    T_tmp = (Index *)malloc(sizeof(Index)*m);
+    if( T_tmp == NULL )
+        error(1);
     for (i = 0; i < query_size; i++) {
         // Allocate a memory block of size m+1 for each row
         q_file[i] = (double*)malloc((m+1) * sizeof(double));
@@ -250,11 +288,25 @@ int main(  int argc , char *argv[] )
     for (int i = 0; i < query_size; i++){
         bsf = INF;
         for (int j = 0; j < sequence_size; j++){
-            distance = msmDistPruned(q_file[i], s_file[j], m, bandwidth, tmpArray, upperBoundArray, ts1, ts2));
-            if(distance < bsf)
+            for( int k = 0; k<m; k++)
             {
-                bsf = distance;
-                bclass = sclass[j];
+                Q_tmp[k].value = q_file[i][k];
+                Q_tmp[k].index = k;
+                T_tmp[k].value = s_file[j][k];
+                T_tmp[k].index = k;
+            }
+            qsort(Q_tmp, m, sizeof(Index),comp);
+            qsort(T_tmp, m, sizeof(Index),comp);
+            glb = lb_sorted(T_tmp, Q_tmp, m, bsf);
+            if(glb < bsf){
+                distance = msmDistPruned(q_file[i], s_file[j], m, bsf, tmpArray, upperBoundArray, ts1, ts2);
+                if(distance < bsf)
+                {
+                    bsf = distance;
+                    bclass = sclass[j];
+                }
+            }else{
+                lb_count++;
             }
         }
         if(qclass[i] == bclass)   tp++;
@@ -278,7 +330,7 @@ int main(  int argc , char *argv[] )
     acc = (double)tp / (double)query_size;
     FILE *rd = NULL;    //result data
     rd = fopen("results.csv", "a");
-    fprintf(rd,"%s %s,%s,%f,%f\n", "PrunedMSM with Sakoe", argv[5],dataset,acc, (t2-t1)/CLOCKS_PER_SEC);
+    fprintf(rd,"%s,%s,%f,%f,%d\n", "PMSMSearch with LB_Sorted",dataset,acc, (t2-t1)/CLOCKS_PER_SEC, lb_count);
     fclose(rd);
     return 0;
 }
