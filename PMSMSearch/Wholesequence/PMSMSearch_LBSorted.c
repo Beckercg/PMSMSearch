@@ -44,9 +44,10 @@ double lb_sorted(Index *t, Index *q, int len, double bsf)
     double lb=0, d;
     for(int l = 1; l<len; l++){
         d = dist(t[l].value, q[l].value);
-        if(d>2*C_COST)d=2*C_COST;
+        if(d>C_COST)d=C_COST;
+
         lb += d;
-        if (lb >= bsf)   {
+        if (lb  >= bsf)   {
             return lb;
         }
     }
