@@ -100,7 +100,7 @@ double getLowerBound(int xCoord, int yCoord)
     return fabs(xCoord - yCoord) * C_COST;
 }
 
-double msmDistPruned(double *X, double *Y, int m, double *tmpArray, double *upperBoundArray, double *ts1, double *ts2)
+double msmDistPruned(double *X, double *Y, int m, double sakoe_bandwidth, double *tmpArray, double *upperBoundArray, double *ts1, double *ts2)
 {
     *upperBoundArray = calculateMsmGreedyArray(X, Y, m, upperBoundArray);
     double upperBound = upperBoundArray[0] + 0.0000001;
@@ -250,7 +250,7 @@ int main(  int argc , char *argv[] )
     for (int i = 0; i < query_size; i++){
         bsf = INF;
         for (int j = 0; j < sequence_size; j++){
-            distance = msmDistPruned(q_file[i], s_file[j], m, bandwidth, tmpArray, upperBoundArray, ts1, ts2));
+            distance = msmDistPruned(q_file[i], s_file[j], m, bandwidth, tmpArray, upperBoundArray, ts1, ts2);
             if(distance < bsf)
             {
                 bsf = distance;
