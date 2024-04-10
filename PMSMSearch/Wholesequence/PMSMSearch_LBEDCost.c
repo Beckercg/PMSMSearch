@@ -118,8 +118,8 @@ double getLowerBound(int xCoord, int yCoord)
 
 double msmDistPruned(double *X, double *Y, int m, double bsf, double *tmpArray, double *upperBoundArray, double *ts1, double *ts2)
 {
-*upperBoundArray = calculateMsmGreedyArray(X, Y, m, upperBoundArray);
-double upperBound = upperBoundArray[0] + 0.0000001;
+    *upperBoundArray = calculateMsmGreedyArray(X, Y, m+1, upperBoundArray);
+    double upperBound = upperBoundArray[0] + 0.0000001;
     ts1[0] = INF;
     ts2[0] = INF;
     for (int i=1; i <=m+1; i++) {

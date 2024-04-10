@@ -102,7 +102,7 @@ double getLowerBound(int xCoord, int yCoord)
 
 double msmDistPruned(double *X, double *Y, int m, int n, double slope, double *tmpArray, double *upperBoundArray, double *ts1, double *ts2)
 {
-    *upperBoundArray = calculateMsmGreedyArray(X, Y, m, upperBoundArray);
+    *upperBoundArray = calculateMsmGreedyArray(X, Y, m+1, upperBoundArray);
     double upperBound = upperBoundArray[0] + 0.0000001;
     ts1[0] = INF;
     ts2[0] = INF;
@@ -125,7 +125,7 @@ double msmDistPruned(double *X, double *Y, int m, int n, double slope, double *t
         int start = (int)ceil( max(start1, start2));
 
         double end1 = 1 / slope * i;
-        double end2 = slope * i + (1 - slope) * m;
+        double end2 = slope * i + (1 - slope) * m+1;
         int end = (int) ceil( min(end1, end2));
         double xi = ts1[i];
         ecNext = i;
