@@ -120,11 +120,13 @@ double msmDistPruned(double *X, double *Y, int m, int n, double bsf, double slop
     for (i = 1; i < m+1; i++)
     {
         unsigned int bandwidth = computeBandwidth(upperBound);
-        double start1 = slope * i;
+        unsigned int start0 = (bandwidth > i) ? sc : max(sc, i - bandwidth);
+        unsigned int end0 = min(i + bandwidth + 1, m+1);
+        double start1 = max(slope * i,start0);
         double start2 = 1 / slope * i - (1 - slope) / slope * m;
         int start = (int)ceil( max(start1, start2));
 
-        double end1 = 1 / slope * i;
+        double end1 = min(1 / slope * i,end0);
         double end2 = slope * i + (1 - slope) * m;
         int end = (int) ceil( min(end1, end2));
         double xi = ts1[i];

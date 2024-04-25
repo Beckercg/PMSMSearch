@@ -241,7 +241,6 @@ double msmDistPruned(const vector<double> &X, const vector<double> &Y, int m)
         ec = ecNext;
     }
 
-    fprintf(stderr,"%f\n", tmpArray[m]);
     return tmpArray[m];
 }
 
