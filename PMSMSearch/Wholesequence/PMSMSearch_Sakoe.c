@@ -119,10 +119,9 @@ double msmDistPruned(double *X, double *Y, int m, double bsf, double sakoe_bandw
     int ecNext;
     for (i = 1; i < m+1; i++)
     {
-        unsigned int bandwidth = computeBandwidth(upperBound);
-        if (sakoe_bandwidth < bandwidth) bandwidth = sakoe_bandwidth;
-        unsigned int start = (bandwidth > i) ? sc : max(sc, i - bandwidth);
-        unsigned int end = min(i + bandwidth + 1, m+1);
+        int start = max(1, i - sakoe_bandwidth);
+
+        int end = min(m, i + sakoe_bandwidth);
         double xi = ts1[i];
         ecNext = i;
         smallerFound = false;

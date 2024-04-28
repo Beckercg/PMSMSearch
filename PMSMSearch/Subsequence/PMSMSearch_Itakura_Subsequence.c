@@ -104,22 +104,17 @@ double msmDistPruned(double *X, double *Y, int m, int n, double bsf, double slop
     int ecNext;
     for (i = 0; i < m+1; i++)
     {
-        unsigned int bandwidth = computeBandwidth(upperBound);
-        unsigned int start0 = (bandwidth > i) ? sc : max(sc, i - bandwidth);
-        unsigned int end0 = min(i + bandwidth + 1, m+1);
-        double start1 = max(slope * i,start0);
-        double start2 = 1 / slope * i - (1 - slope) / slope * m;
-        int start = (int)ceil( max(start1, start2));
+        double start1 = slope * i;
+        double start2 = ceil(max(1 / slope * i - (1 - slope) / slope * m, start1));
 
-        double end1 = min(1 / slope * i,end0);
-        double end2 = slope * i + (1 - slope) * m;
-        int end = (int) ceil( min(end1, end2));
+        double end1 = 1 / slope * i;
+        double end2 = ceil(min(slope * i + (1 - slope) * m,end1));
 
         double xi = X[i];
         ecNext = i;
         smallerFound = false;
         smaller_as_bsf = false;
-        for (j = start; j <= end; j++)
+        for (j = (int) start2; j <= (int) end2; j++)
         {
             double yj = Y[j];
             double d1, d2, d3;
@@ -344,7 +339,6 @@ int main(  int argc , char *argv[] )
                     }
 
                     distCalc = msmDistPruned(tz,q,m,m,bsf,slope,tmpArray, upperBoundArray);
-
                     if( distCalc < bsf )
                     {   /// Update bsf
                         bsf = distCalc;
