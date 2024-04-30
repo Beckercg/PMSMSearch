@@ -44,6 +44,8 @@ double lb_sorted(Index *t, Index *q, int len, double bsf)
             return lb;
         }
     }
+
+    return lb;
 }
 
 double calculateMsmGreedyArray(double *X, double *Y, int m, double *greedyArray)

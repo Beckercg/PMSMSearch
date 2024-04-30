@@ -365,7 +365,7 @@ int main(  int argc , char *argv[] )
     /// Output
     FILE *rd = NULL;
     rd = fopen("subsequence_results.csv", "a");
-    fprintf(rd,"%s %s,%i,%lli,%f,%lld,%f\n", "PMSMSearch with Sakoe", argv[4], m,i,bsf,loc, (t2-t1)/CLOCKS_PER_SEC, lbsorted);
+    fprintf(rd,"%s %s,%i,%lli,%f,%lld,%f\n", "PMSMSearch with Sakoe", argv[4], m,i,bsf,loc, (t2-t1)/CLOCKS_PER_SEC);
     fprintf(rd,"Times for every 100000: [");
     for (int i = 0; i < tr_count; i++){
         fprintf(rd,"%f, ", time_result[i]);
