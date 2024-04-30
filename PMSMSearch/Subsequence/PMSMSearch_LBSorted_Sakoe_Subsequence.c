@@ -136,7 +136,7 @@ double msmDistPruned(double *X, double *Y, int m, double bsf, double sakoe_bandw
     int ecNext;
     for (i = 0; i < m+1; i++)
     {
-        int start = max(1, i - sakoe_bandwidth);
+        int start = max(sc, i - sakoe_bandwidth);
         int end = min(m, i + sakoe_bandwidth);
         double xi = X[i];
         ecNext = i;
